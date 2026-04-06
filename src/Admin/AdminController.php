@@ -188,10 +188,10 @@ final class AdminController
     {
         $this->verify_ajax_request();
 
-        $mode = sanitize_key((string) ($_POST['mode'] ?? 'test'));
+        $mode = sanitize_key((string) ($_POST['mode'] ?? 'live'));
 
-        if (! in_array($mode, ['test', 'live'], true)) {
-            wp_send_json_error(['message' => __('Choose a valid mode.', 'access402')], 400);
+        if ($mode !== 'live') {
+            wp_send_json_error(['message' => __('Live mode is the only configurable provider connection in v1.', 'access402')], 400);
         }
 
         $result = $this->connection_tester->test($mode, array_map('wp_unslash', $_POST));

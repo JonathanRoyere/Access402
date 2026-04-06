@@ -10,7 +10,7 @@ declare(strict_types=1);
         <div class="access402-card-header">
             <div>
                 <h2><?php esc_html_e('Payment Mode', 'access402'); ?></h2>
-                <p><?php esc_html_e('Switch which wallet and credentials Access402 uses at runtime.', 'access402'); ?></p>
+                <p><?php esc_html_e('Switch which wallet and facilitator path Access402 uses at runtime.', 'access402'); ?></p>
             </div>
         </div>
         <label class="access402-toggle">
@@ -24,45 +24,39 @@ declare(strict_types=1);
         <div class="access402-card-header">
             <div>
                 <h2><?php esc_html_e('Provider', 'access402'); ?></h2>
-                <p><?php esc_html_e('Live mode uses Coinbase CDP. Test mode automatically uses the public x402.org facilitator unless both test CDP credentials are present.', 'access402'); ?></p>
+                <p><?php esc_html_e('Sandbox mode uses the public x402.org facilitator on Base Sepolia automatically. Only live mode needs provider configuration here.', 'access402'); ?></p>
             </div>
-            <span class="access402-static-pill"><?php esc_html_e('Auto by mode', 'access402'); ?></span>
+            <span class="access402-static-pill"><?php esc_html_e('Live only', 'access402'); ?></span>
         </div>
 
-        <div class="access402-split-grid">
-            <?php foreach (['test' => __('Test', 'access402'), 'live' => __('Live', 'access402')] as $mode => $label) : ?>
-                <section class="access402-subcard access402-mode-panel <?php echo $mode === (\Access402\Support\Helpers::active_mode($settings)) ? 'is-active' : ''; ?>" data-mode-panel="<?php echo esc_attr($mode); ?>">
-                    <div class="access402-subcard-head">
-                        <h3><?php echo esc_html($label); ?></h3>
-                        <span class="access402-badge access402-badge-<?php echo esc_attr($settings[$mode . '_connection_status']); ?>" data-connection-badge="<?php echo esc_attr($mode); ?>">
-                            <?php echo esc_html($connection_statuses[$settings[$mode . '_connection_status']] ?? $connection_statuses['not_tested']); ?>
-                        </span>
-                    </div>
-                    <p class="access402-inline-note">
-                        <?php
-                        echo esc_html(
-                            $mode === 'test'
-                                ? __('Leave test credentials empty to use the signup-free x402.org facilitator on Base Sepolia. Add both fields only if you want to test the authenticated CDP facilitator instead.', 'access402')
-                                : __('Live mode requires a CDP Secret API Key and Secret before Access402 can verify and settle payments.', 'access402')
-                        );
-                        ?>
-                    </p>
-                    <label class="access402-field">
-                        <span><?php echo esc_html($label . ' ' . __('API key', 'access402')); ?></span>
-                        <input type="password" name="<?php echo esc_attr($mode); ?>_api_key" value="<?php echo esc_attr((string) $settings[$mode . '_api_key']); ?>" autocomplete="off" />
-                    </label>
-                    <label class="access402-field">
-                        <span><?php echo esc_html($label . ' ' . __('API secret', 'access402')); ?></span>
-                        <input type="password" name="<?php echo esc_attr($mode); ?>_api_secret" value="<?php echo esc_attr((string) $settings[$mode . '_api_secret']); ?>" autocomplete="off" />
-                    </label>
-                    <button type="button" class="button" data-test-connection="<?php echo esc_attr($mode); ?>">
-                        <?php esc_html_e('Test connection', 'access402'); ?>
-                    </button>
-                    <p class="access402-inline-note" data-connection-message="<?php echo esc_attr($mode); ?>"></p>
-                    <input type="hidden" name="<?php echo esc_attr($mode); ?>_connection_status" value="<?php echo esc_attr((string) $settings[$mode . '_connection_status']); ?>" data-connection-input="<?php echo esc_attr($mode); ?>" />
-                </section>
-            <?php endforeach; ?>
-        </div>
+        <p class="access402-inline-note">
+            <?php esc_html_e('There is nothing to configure for sandbox payments in v1. Access402 will use x402.org automatically whenever test mode is enabled.', 'access402'); ?>
+        </p>
+
+        <section class="access402-subcard">
+            <div class="access402-subcard-head">
+                <h3><?php esc_html_e('Live', 'access402'); ?></h3>
+                <span class="access402-badge access402-badge-<?php echo esc_attr($settings['live_connection_status']); ?>" data-connection-badge="live">
+                    <?php echo esc_html($connection_statuses[$settings['live_connection_status']] ?? $connection_statuses['not_tested']); ?>
+                </span>
+            </div>
+            <p class="access402-inline-note">
+                <?php esc_html_e('Live mode requires a CDP Secret API Key and Secret before Access402 can verify and settle payments.', 'access402'); ?>
+            </p>
+            <label class="access402-field">
+                <span><?php esc_html_e('Live API key', 'access402'); ?></span>
+                <input type="password" name="live_api_key" value="<?php echo esc_attr((string) $settings['live_api_key']); ?>" autocomplete="off" />
+            </label>
+            <label class="access402-field">
+                <span><?php esc_html_e('Live API secret', 'access402'); ?></span>
+                <input type="password" name="live_api_secret" value="<?php echo esc_attr((string) $settings['live_api_secret']); ?>" autocomplete="off" />
+            </label>
+            <button type="button" class="button" data-test-connection="live">
+                <?php esc_html_e('Test connection', 'access402'); ?>
+            </button>
+            <p class="access402-inline-note" data-connection-message="live"></p>
+            <input type="hidden" name="live_connection_status" value="<?php echo esc_attr((string) $settings['live_connection_status']); ?>" data-connection-input="live" />
+        </section>
     </div>
 
     <div class="access402-card">

@@ -407,6 +407,7 @@ async function payForUnlock() {
       },
       body: JSON.stringify({
         target_path: String(boot.target && boot.target.path ? boot.target.path : ""),
+        target_url: String(boot.target && boot.target.url ? boot.target.url : ""),
       }),
     });
     const payload = await parseJson(response);

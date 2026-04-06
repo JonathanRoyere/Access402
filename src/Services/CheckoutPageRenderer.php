@@ -253,9 +253,9 @@ final class CheckoutPageRenderer
                 <div class="access402-card">
                     <div class="access402-grid">
                         <section>
-                            <p class="access402-kicker"><?php esc_html_e('Access402 Protected Page', 'access402'); ?></p>
+                            <p class="access402-kicker"><?php esc_html_e('Access402 Protected Resource', 'access402'); ?></p>
                             <h1><?php esc_html_e('Pay with your wallet to continue', 'access402'); ?></h1>
-                            <p class="access402-copy"><?php esc_html_e('This page is protected with x402. Connect a compatible browser wallet, approve the payment, and Access402 will unlock the page as soon as the settlement succeeds.', 'access402'); ?></p>
+                            <p class="access402-copy"><?php esc_html_e('This resource is protected with x402. Connect a compatible browser wallet, approve the payment, and Access402 will unlock the request as soon as the settlement succeeds.', 'access402'); ?></p>
                             <div class="access402-summary"><?php echo esc_html($summary); ?></div>
                         </section>
                         <aside class="access402-side">

@@ -11,9 +11,9 @@ Access402 is a production-minded WordPress plugin for monetizing WordPress-route
 - Path-based rules with exact and `*` wildcard matching
 - Drag-and-drop rule ordering with top-to-bottom precedence
 - Trusted role, wallet, and IP bypass before payment checks
-- Structured `PAYMENT-REQUIRED` responses for matched frontend and REST paths
+- Structured `PAYMENT-REQUIRED` responses for matched frontend paths, WordPress REST routes, and protected file downloads
 - Real `PAYMENT-SIGNATURE` verification and settlement through x402 facilitators
-- Automatic testnet facilitator fallback to `x402.org` when test CDP credentials are blank
+- Built-in sandbox facilitator path through `x402.org` with no test API keys
 - Browser checkout flow built on the official `@x402/fetch` and `@x402/evm` libraries
 
 ## Installation
@@ -31,8 +31,8 @@ Access402 is a production-minded WordPress plugin for monetizing WordPress-route
 Global defaults live here:
 
 - Test/live mode
-- Optional test CDP credentials and required live CDP credentials
-- Connection testing per environment
+- Keyless sandbox mode and required live CDP credentials
+- Live connection testing
 - Default currency and resolved network
 - Default price
 - Default unlock behavior
@@ -79,7 +79,9 @@ When a WordPress-routed request comes in, Access402:
 5. Reuses an existing signed browser unlock grant when the unlock behavior allows it.
 6. Verifies and settles `PAYMENT-SIGNATURE` requests through the active x402 facilitator when a client sends payment.
 7. Frontend page requests render a checkout page with a wallet button that pays through a protected unlock endpoint.
-8. Logs bypass, payment-required, allowed, and runtime-error outcomes when logging is enabled.
+8. Matching REST requests can return `402` directly and complete after a retried paid request.
+9. Matching file links can be proxied through Access402 and streamed only after the shared payment flow allows them.
+10. Logs bypass, payment-required, allowed, and runtime-error outcomes when logging is enabled.
 
 ### Important v1 runtime note
 
@@ -88,16 +90,18 @@ The admin and domain model intentionally still support `USDC`, `ETH`, and `SOL` 
 ### Real payment scope
 
 - Frontend page requests render a small checkout page that calls a protected WordPress REST unlock endpoint.
+- WordPress REST routes are challenged through the same shared payment flow as pages.
+- Protected file downloads are served through an Access402-controlled URL that challenges, verifies, settles, and then streams the file.
 - The browser client is bundled from the official `@x402/fetch@2.9.0` and `@x402/evm@2.9.0` packages.
 - The browser flow uses the documented x402 pattern: `402` -> `PAYMENT-REQUIRED` -> wallet signing -> retry with `PAYMENT-SIGNATURE` -> `PAYMENT-RESPONSE`.
-- Test mode settles against Base Sepolia `USDC`, using the public `x402.org` facilitator by default or Coinbase CDP when both test credentials are configured.
+- Test mode settles against Base Sepolia `USDC`, using the public `x402.org` facilitator.
 - Live mode settles against Base `USDC` through Coinbase CDP.
 - Successful settlement issues a signed browser unlock grant so the original page request can complete after reload, including `per_request`.
 - REST and other machine clients can still pay directly by sending `PAYMENT-SIGNATURE`.
 
 ### Path scope note
 
-v1 intercepts requests that flow through WordPress. Direct static files served outside WordPress are not automatically proxied by this plugin.
+v1 intercepts normal WordPress requests and its own protected file proxy URLs. Matching attachment URLs and matching local file links rendered through WordPress content filters are rewritten to the protected download URL automatically. Raw static file URLs served directly by the web server outside those WordPress-controlled surfaces can still bypass the plugin.
 
 ## Architecture notes
 
@@ -131,6 +135,7 @@ uninstall.php
 - `src/Repositories/*` owns persistence and query logic.
 - `src/Services/*` holds runtime/business rules.
 - `src/Admin/AdminController.php` keeps admin orchestration thin.
+- `src/Http/FileController.php` handles protected file proxy requests.
 - `src/Http/RuntimeController.php` handles page and generic REST interception.
 - `src/Http/UnlockController.php` exposes the protected REST unlock endpoint used by the browser checkout button.
 
@@ -156,6 +161,7 @@ uninstall.php
 - `AccessEvaluator`
 - `RequestLogger`
 - `ProtectedPaymentFlow`
+- `ProtectedFileUrlService`
 - `X402FacilitatorResolver`
 - `X402FacilitatorClient`
 - `X402PaymentProfileResolver`

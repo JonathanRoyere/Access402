@@ -59,12 +59,7 @@ final class SettingsValidator
             }
         }
 
-        $test_connection_status = sanitize_key((string) ($input['test_connection_status'] ?? $existing['test_connection_status'] ?? ConnectionStatusOptions::NOT_TESTED));
         $live_connection_status = sanitize_key((string) ($input['live_connection_status'] ?? $existing['live_connection_status'] ?? ConnectionStatusOptions::NOT_TESTED));
-
-        if (! ConnectionStatusOptions::is_valid($test_connection_status)) {
-            $test_connection_status = ConnectionStatusOptions::NOT_TESTED;
-        }
 
         if (! ConnectionStatusOptions::is_valid($live_connection_status)) {
             $live_connection_status = ConnectionStatusOptions::NOT_TESTED;
@@ -74,11 +69,10 @@ final class SettingsValidator
             'data' => [
                 'test_mode'               => Helpers::bool($input['test_mode'] ?? false) ? 1 : 0,
                 'provider'                => 'coinbase_cdp',
-                'test_api_key'            => trim((string) ($input['test_api_key'] ?? '')),
-                'test_api_secret'         => $this->normalize_secret((string) ($input['test_api_secret'] ?? '')),
+                'test_api_key'            => '',
+                'test_api_secret'         => '',
                 'live_api_key'            => trim((string) ($input['live_api_key'] ?? '')),
                 'live_api_secret'         => $this->normalize_secret((string) ($input['live_api_secret'] ?? '')),
-                'test_connection_status'  => $test_connection_status,
                 'live_connection_status'  => $live_connection_status,
                 'test_wallet'             => $test_wallet,
                 'live_wallet'             => $live_wallet,

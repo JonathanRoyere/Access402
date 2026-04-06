@@ -5,11 +5,19 @@ declare(strict_types=1);
 namespace Access402\Http;
 
 use Access402\Services\CheckoutPageRenderer;
+use Access402\Services\ProtectedFileUrlService;
 use Access402\Services\ProtectedPaymentFlow;
 use Access402\Support\Helpers;
 
 final class RuntimeController
 {
+    /**
+     * REST responses need headers attached to the response object itself.
+     *
+     * @var array<string, string>
+     */
+    private array $pending_rest_headers = [];
+
     public function __construct(
         private readonly ProtectedPaymentFlow $payment_flow,
         private readonly CheckoutPageRenderer $checkout_renderer
@@ -19,12 +27,17 @@ final class RuntimeController
     public function boot(): void
     {
         add_action('template_redirect', [$this, 'intercept_frontend'], 0);
-        add_filter('rest_pre_dispatch', [$this, 'intercept_rest'], 5, 3);
+        add_filter('rest_dispatch_request', [$this, 'intercept_rest'], 5, 4);
+        add_filter('rest_post_dispatch', [$this, 'apply_rest_headers'], 5, 3);
     }
 
     public function intercept_frontend(): void
     {
         if (is_admin() || wp_doing_ajax() || wp_doing_cron() || (defined('REST_REQUEST') && REST_REQUEST)) {
+            return;
+        }
+
+        if (isset($_GET[ProtectedFileUrlService::QUERY_ARG])) {
             return;
         }
 
@@ -85,24 +98,63 @@ final class RuntimeController
         exit;
     }
 
-    public function intercept_rest(mixed $result, \WP_REST_Server $server, \WP_REST_Request $request): mixed
+    public function intercept_rest(mixed $dispatch_result, \WP_REST_Request $request, string $route, array $handler): mixed
     {
         if ($request->get_route() === '/' . UnlockController::ROUTE_NAMESPACE . UnlockController::ROUTE_UNLOCK) {
-            return $result;
+            return $dispatch_result;
         }
 
-        $context = $this->build_context('rest');
+        $context = $this->build_rest_context($request);
 
         if ($context->method === 'OPTIONS') {
-            return $result;
+            return $dispatch_result;
         }
 
         $decision = $this->payment_flow->evaluate($context);
 
         if (($decision['allow'] ?? false) === true) {
-            $this->send_headers((array) ($decision['headers'] ?? []));
+            $this->pending_rest_headers = array_filter(
+                (array) ($decision['headers'] ?? []),
+                static fn (mixed $value): bool => is_string($value) && $value !== ''
+            );
 
-            return $result;
+            return $dispatch_result;
+        }
+
+        if ($this->should_render_rest_checkout($request, $decision)) {
+            $this->send_headers((array) ($decision['headers'] ?? []));
+            status_header((int) ($decision['status'] ?? 402));
+            header('Content-Type: text/html; charset=' . get_bloginfo('charset'), true);
+
+            if ($context->method === 'HEAD') {
+                exit;
+            }
+
+            if ((int) ($decision['status'] ?? 402) === 402 && is_array($decision['matched_rule'] ?? null) && is_array($decision['payment_profile'] ?? null)) {
+                echo $this->checkout_renderer->render(
+                    [
+                        'app_name'          => get_bloginfo('name'),
+                        'target_path'       => $context->path,
+                        'target_url'        => $context->url,
+                        'unlock_endpoint'   => rest_url(UnlockController::ROUTE_NAMESPACE . UnlockController::ROUTE_UNLOCK),
+                        'summary'           => (string) ($decision['summary'] ?? $decision['message'] ?? ''),
+                        'price'             => (string) (($decision['effective']['price'] ?? '')),
+                        'currency'          => (string) (($decision['effective']['currency'] ?? '')),
+                        'network_label'     => (string) (($decision['payment_profile']['network_label'] ?? '')),
+                        'network_id'        => (string) (($decision['payment_profile']['network'] ?? '')),
+                        'testnet'           => (bool) (($decision['payment_profile']['testnet'] ?? false)),
+                        'facilitator_label' => (string) (($decision['payment_profile']['facilitator_label'] ?? '')),
+                        'rule_name'         => (string) (($decision['matched_rule']['name'] ?? '')),
+                    ]
+                ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                exit;
+            }
+
+            echo $this->render_fallback_page(
+                (string) ($decision['message'] ?? __('Payment required.', 'access402')),
+                (array) ($decision['payload'] ?? [])
+            ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            exit;
         }
 
         return new \WP_REST_Response(
@@ -113,6 +165,34 @@ final class RuntimeController
             (int) ($decision['status'] ?? 402),
             (array) ($decision['headers'] ?? [])
         );
+    }
+
+    public function apply_rest_headers(\WP_HTTP_Response $response, \WP_REST_Server $server, \WP_REST_Request $request): \WP_HTTP_Response
+    {
+        foreach ($this->pending_rest_headers as $name => $value) {
+            $response->header($name, $value);
+        }
+
+        $this->pending_rest_headers = [];
+
+        return $response;
+    }
+
+    private function should_render_rest_checkout(\WP_REST_Request $request, array $decision): bool
+    {
+        $accept = strtolower(trim((string) $request->get_header('accept')));
+
+        if ($accept === '') {
+            return false;
+        }
+
+        if (! str_contains($accept, 'text/html') && ! str_contains($accept, 'application/xhtml+xml')) {
+            return false;
+        }
+
+        $status = (int) ($decision['status'] ?? 402);
+
+        return in_array($status, [402, 500], true);
     }
 
     private function build_context(string $type): RequestContext
@@ -132,6 +212,25 @@ final class RuntimeController
             Helpers::request_payment_signature(),
             $user instanceof \WP_User ? (array) $user->roles : [],
             str_contains($accept, 'application/json') || $type === 'rest'
+        );
+    }
+
+    private function build_rest_context(\WP_REST_Request $request): RequestContext
+    {
+        $user   = wp_get_current_user();
+        $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper(sanitize_text_field(wp_unslash((string) $_SERVER['REQUEST_METHOD']))) : 'GET';
+        $route  = Helpers::normalize_path('/' . trim(rest_get_url_prefix(), '/') . '/' . ltrim($request->get_route(), '/'));
+
+        return new RequestContext(
+            $route,
+            rest_url(ltrim($request->get_route(), '/')),
+            $method,
+            'rest',
+            Helpers::request_ip(),
+            Helpers::request_wallet_address(),
+            Helpers::request_payment_signature(),
+            $user instanceof \WP_User ? (array) $user->roles : [],
+            true
         );
     }
 

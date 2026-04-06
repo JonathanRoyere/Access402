@@ -6,6 +6,7 @@ namespace Access402;
 
 use Access402\Admin\AdminController;
 use Access402\Database\Migrator;
+use Access402\Http\FileController;
 use Access402\Http\RuntimeController;
 use Access402\Http\UnlockController;
 use Access402\Repositories\LogRepository;
@@ -22,6 +23,7 @@ use Access402\Services\EffectiveRuleConfigResolver;
 use Access402\Services\NetworkResolver;
 use Access402\Services\ProtectedPaymentFlow;
 use Access402\Services\ProviderConnectionTester;
+use Access402\Services\ProtectedFileUrlService;
 use Access402\Services\RequestLogger;
 use Access402\Services\RuleMatcher;
 use Access402\Services\RuleSummaryBuilder;
@@ -109,6 +111,7 @@ final class Plugin
         $facilitator_client         = new X402FacilitatorClient($facilitator_resolver, $jwt_encoder);
         $provider_connection_tester = new ProviderConnectionTester($facilitator_client, $facilitator_resolver, $network_resolver, $wallet_validator);
         $payment_profiles           = new X402PaymentProfileResolver($facilitator_resolver);
+        $protected_file_urls        = new ProtectedFileUrlService($matcher);
         $header_codec               = new X402HeaderCodec();
         $payment_flow               = new ProtectedPaymentFlow(
             $settings,
@@ -142,7 +145,13 @@ final class Plugin
 
         (new UnlockController($payment_flow))->boot();
 
+        (new FileController($payment_flow, $checkout_renderer, $protected_file_urls))->boot();
+
         (new RuntimeController($payment_flow, $checkout_renderer))->boot();
+
+        add_filter('wp_get_attachment_url', [$protected_file_urls, 'filter_attachment_url'], 20, 2);
+        add_filter('the_content', [$protected_file_urls, 'rewrite_content_urls'], 20);
+        add_filter('widget_text_content', [$protected_file_urls, 'rewrite_content_urls'], 20);
 
         if (is_admin()) {
             (new AdminController(

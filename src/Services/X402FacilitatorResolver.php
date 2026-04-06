@@ -33,18 +33,6 @@ final class X402FacilitatorResolver
             ];
         }
 
-        if ($has_key && $has_secret) {
-            return [
-                'id'                   => 'coinbase_cdp',
-                'label'                => 'Coinbase CDP',
-                'base_url'             => self::CDP_BASE_URL,
-                'api_host'             => self::CDP_API_HOST,
-                'requires_auth'        => true,
-                'credentials_complete' => true,
-                'credentials_partial'  => false,
-            ];
-        }
-
         return [
             'id'                   => 'x402_org',
             'label'                => 'x402.org',
@@ -52,7 +40,7 @@ final class X402FacilitatorResolver
             'api_host'             => self::X402_ORG_API_HOST,
             'requires_auth'        => false,
             'credentials_complete' => false,
-            'credentials_partial'  => $has_key xor $has_secret,
+            'credentials_partial'  => false,
         ];
     }
 }

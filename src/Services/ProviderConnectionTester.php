@@ -18,6 +18,13 @@ final class ProviderConnectionTester
 
     public function test(string $mode, array $payload): array
     {
+        if ($mode !== 'live') {
+            return [
+                'status'  => ConnectionStatusOptions::FAILED,
+                'message' => __('Sandbox mode does not have a configurable provider connection in v1.', 'access402'),
+            ];
+        }
+
         $currency  = (string) ($payload['default_currency'] ?? '');
         $network   = $this->network_resolver->resolve($currency);
         $wallet    = trim((string) ($payload[$mode . '_wallet'] ?? ''));
@@ -55,20 +62,14 @@ final class ProviderConnectionTester
 
         return [
             'status'  => ConnectionStatusOptions::CONNECTED,
-            'message' => $this->success_message($mode, $facilitator),
+            'message' => $this->success_message($facilitator),
         ];
     }
 
-    private function success_message(string $mode, array $facilitator): string
+    private function success_message(array $facilitator): string
     {
         if (($facilitator['requires_auth'] ?? false) === true) {
-            return $mode === 'live'
-                ? __('Live mode will use Coinbase CDP and the facilitator responded successfully.', 'access402')
-                : __('Test mode is using Coinbase CDP because test credentials are configured, and the facilitator responded successfully.', 'access402');
-        }
-
-        if (($facilitator['credentials_partial'] ?? false) === true) {
-            return __('Test mode will fall back to the public x402.org facilitator because the test CDP credentials are incomplete.', 'access402');
+            return __('Live mode will use Coinbase CDP and the facilitator responded successfully.', 'access402');
         }
 
         return __('Test mode is using the public x402.org facilitator, which does not require CDP API keys.', 'access402');

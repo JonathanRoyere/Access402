@@ -21,11 +21,8 @@ final class SettingsRepository
         return [
             'test_mode'              => 1,
             'provider'               => 'coinbase_cdp',
-            'test_api_key'           => '',
-            'test_api_secret'        => '',
             'live_api_key'           => '',
             'live_api_secret'        => '',
-            'test_connection_status' => ConnectionStatusOptions::NOT_TESTED,
             'live_connection_status' => ConnectionStatusOptions::NOT_TESTED,
             'test_wallet'            => '',
             'live_wallet'            => '',
@@ -61,7 +58,11 @@ final class SettingsRepository
 
     public function update(array $values): void
     {
-        update_option(self::OPTION_KEY, array_merge($this->all(), $values), false);
+        $settings = array_merge($this->all(), $values);
+
+        unset($settings['test_api_key'], $settings['test_api_secret'], $settings['test_connection_status']);
+
+        update_option(self::OPTION_KEY, $settings, false);
     }
 
     public function delete_all(): void

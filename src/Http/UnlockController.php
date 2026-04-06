@@ -36,7 +36,8 @@ final class UnlockController
 
     public function unlock(\WP_REST_Request $request): \WP_REST_Response
     {
-        $raw_target = trim((string) ($request->get_param('target_path') ?: $request->get_param('path') ?: ''));
+        $raw_target       = trim((string) ($request->get_param('target_path') ?: $request->get_param('path') ?: ''));
+        $raw_redirect_url = trim((string) ($request->get_param('target_url') ?: ''));
 
         if ($raw_target === '') {
             return new \WP_REST_Response(
@@ -47,7 +48,8 @@ final class UnlockController
             );
         }
 
-        $target_path = Helpers::normalize_path($raw_target);
+        $target_path  = Helpers::normalize_path($raw_target);
+        $redirect_url = wp_validate_redirect($raw_redirect_url, home_url($target_path));
 
         $context  = $this->build_context();
         $decision = $this->payment_flow->evaluate(
@@ -69,7 +71,7 @@ final class UnlockController
             return new \WP_REST_Response(
                 [
                     'unlocked'        => true,
-                    'redirectUrl'     => home_url($target_path),
+                    'redirectUrl'     => $redirect_url,
                     'targetPath'      => $target_path,
                     'requiresPayment' => false,
                     'matchedRuleId'   => is_array($matched_rule) ? (int) ($matched_rule['id'] ?? 0) : null,
@@ -85,7 +87,7 @@ final class UnlockController
                 'message'         => (string) ($decision['message'] ?? __('Payment required.', 'access402')),
                 'payment'         => $decision['payload'] ?? [],
                 'targetPath'      => $target_path,
-                'redirectUrl'     => home_url($target_path),
+                'redirectUrl'     => $redirect_url,
                 'requiresPayment' => ((int) ($decision['status'] ?? 402) === 402),
             ],
             (int) ($decision['status'] ?? 402),
