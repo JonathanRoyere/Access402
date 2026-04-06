@@ -51,6 +51,13 @@ final class Helpers
         return self::normalize_path($path);
     }
 
+    public static function request_url(): string
+    {
+        $request_uri = isset($_SERVER['REQUEST_URI']) ? wp_unslash((string) $_SERVER['REQUEST_URI']) : '/';
+
+        return home_url($request_uri);
+    }
+
     public static function normalize_path(string $path): string
     {
         $path = trim($path);
@@ -174,6 +181,25 @@ final class Helpers
             'X-WALLET-ADDRESS',
             'X-PAYMENT-FROM',
             'X-ACCESS402-WALLET',
+        ];
+
+        foreach ($aliases as $alias) {
+            foreach ($headers as $name => $value) {
+                if (strcasecmp($name, $alias) === 0 && is_string($value) && trim($value) !== '') {
+                    return trim($value);
+                }
+            }
+        }
+
+        return '';
+    }
+
+    public static function request_payment_signature(): string
+    {
+        $headers = self::request_headers();
+        $aliases = [
+            'PAYMENT-SIGNATURE',
+            'X-PAYMENT',
         ];
 
         foreach ($aliases as $alias) {

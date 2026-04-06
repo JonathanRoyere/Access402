@@ -11,8 +11,10 @@ Access402 is a production-minded WordPress plugin for monetizing WordPress-route
 - Path-based rules with exact and `*` wildcard matching
 - Drag-and-drop rule ordering with top-to-bottom precedence
 - Trusted role, wallet, and IP bypass before payment checks
-- Structured 402 challenge responses for matched frontend and REST paths
-- Coinbase CDP connection testing with signed JWT requests
+- Structured `PAYMENT-REQUIRED` responses for matched frontend and REST paths
+- Real `PAYMENT-SIGNATURE` verification and settlement through x402 facilitators
+- Automatic testnet facilitator fallback to `x402.org` when test CDP credentials are blank
+- Browser checkout flow built on the official `@x402/fetch` and `@x402/evm` libraries
 
 ## Installation
 
@@ -29,7 +31,7 @@ Access402 is a production-minded WordPress plugin for monetizing WordPress-route
 Global defaults live here:
 
 - Test/live mode
-- Coinbase CDP credentials
+- Optional test CDP credentials and required live CDP credentials
 - Connection testing per environment
 - Default currency and resolved network
 - Default price
@@ -74,12 +76,24 @@ When a WordPress-routed request comes in, Access402:
    - Trusted IPs
 3. Matches the first active rule from top to bottom.
 4. Resolves effective values from global settings plus rule overrides.
-5. Returns a structured 402 challenge payload for matched requests.
-6. Logs bypass, payment-required, and runtime-error outcomes when logging is enabled.
+5. Reuses an existing signed browser unlock grant when the unlock behavior allows it.
+6. Verifies and settles `PAYMENT-SIGNATURE` requests through the active x402 facilitator when a client sends payment.
+7. Frontend page requests render a checkout page with a wallet button that pays through a protected unlock endpoint.
+8. Logs bypass, payment-required, allowed, and runtime-error outcomes when logging is enabled.
 
 ### Important v1 runtime note
 
-The admin and domain model intentionally support `USDC`, `ETH`, and `SOL` because that is the product surface defined for v1. CDP’s clearly documented facilitator examples are narrower than that model today, so the runtime stays honest: it emits structured challenge data and clean request evaluation instead of pretending every configured combination has full facilitator settlement wired in. That keeps v1 production-safe while leaving the service layer ready for a stricter settlement implementation in a later version.
+The admin and domain model intentionally still support `USDC`, `ETH`, and `SOL` because that is the broader product surface defined for v1. The real settled browser/runtime flow in this codebase is intentionally narrower today: it supports `USDC` on Base Sepolia in test mode and `USDC` on Base in live mode. If a rule resolves to `ETH` or `SOL`, the runtime now fails honestly with a configuration/runtime message instead of pretending an unsupported settlement happened.
+
+### Real payment scope
+
+- Frontend page requests render a small checkout page that calls a protected WordPress REST unlock endpoint.
+- The browser client is bundled from the official `@x402/fetch@2.9.0` and `@x402/evm@2.9.0` packages.
+- The browser flow uses the documented x402 pattern: `402` -> `PAYMENT-REQUIRED` -> wallet signing -> retry with `PAYMENT-SIGNATURE` -> `PAYMENT-RESPONSE`.
+- Test mode settles against Base Sepolia `USDC`, using the public `x402.org` facilitator by default or Coinbase CDP when both test credentials are configured.
+- Live mode settles against Base `USDC` through Coinbase CDP.
+- Successful settlement issues a signed browser unlock grant so the original page request can complete after reload, including `per_request`.
+- REST and other machine clients can still pay directly by sending `PAYMENT-SIGNATURE`.
 
 ### Path scope note
 
@@ -94,6 +108,10 @@ access402.php
 assets/
   css/
   js/
+    UPSTREAM.md
+    src/
+package.json
+package-lock.json
 src/
   Admin/
   Database/
@@ -113,7 +131,15 @@ uninstall.php
 - `src/Repositories/*` owns persistence and query logic.
 - `src/Services/*` holds runtime/business rules.
 - `src/Admin/AdminController.php` keeps admin orchestration thin.
-- `src/Http/RuntimeController.php` handles path evaluation and challenge responses.
+- `src/Http/RuntimeController.php` handles page and generic REST interception.
+- `src/Http/UnlockController.php` exposes the protected REST unlock endpoint used by the browser checkout button.
+
+### Upstream dependency provenance
+
+- `assets/js/frontend-checkout.js` is bundled from the official npm packages `@x402/fetch@2.9.0` and `@x402/evm@2.9.0`.
+- The local wrapper source lives in `assets/js/src/frontend-checkout.js`.
+- Provenance details are recorded in `assets/js/UPSTREAM.md`.
+- Rebuild with `npm run build:checkout`.
 
 ### Key services
 
@@ -129,6 +155,11 @@ uninstall.php
 - `RuleMatcher`
 - `AccessEvaluator`
 - `RequestLogger`
+- `ProtectedPaymentFlow`
+- `X402FacilitatorResolver`
+- `X402FacilitatorClient`
+- `X402PaymentProfileResolver`
+- `CheckoutPageRenderer`
 
 ## Safe uninstall
 

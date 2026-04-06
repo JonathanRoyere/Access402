@@ -7,15 +7,20 @@ namespace Access402;
 use Access402\Admin\AdminController;
 use Access402\Database\Migrator;
 use Access402\Http\RuntimeController;
+use Access402\Http\UnlockController;
 use Access402\Repositories\LogRepository;
 use Access402\Repositories\RuleRepository;
 use Access402\Repositories\SettingsRepository;
 use Access402\Repositories\TrustedIpRepository;
 use Access402\Repositories\TrustedWalletRepository;
 use Access402\Services\AccessEvaluator;
+use Access402\Services\AccessGrantService;
 use Access402\Services\CdpJwtEncoder;
+use Access402\Services\CheckoutPageRenderer;
+use Access402\Services\DebugLogger;
 use Access402\Services\EffectiveRuleConfigResolver;
 use Access402\Services\NetworkResolver;
+use Access402\Services\ProtectedPaymentFlow;
 use Access402\Services\ProviderConnectionTester;
 use Access402\Services\RequestLogger;
 use Access402\Services\RuleMatcher;
@@ -25,6 +30,10 @@ use Access402\Services\SettingsValidator;
 use Access402\Services\TrustedIpValidator;
 use Access402\Services\TrustedWalletValidator;
 use Access402\Services\WalletValidator;
+use Access402\Services\X402FacilitatorClient;
+use Access402\Services\X402FacilitatorResolver;
+use Access402\Services\X402HeaderCodec;
+use Access402\Services\X402PaymentProfileResolver;
 
 final class Plugin
 {
@@ -91,9 +100,31 @@ final class Plugin
         $rule_resolver              = new EffectiveRuleConfigResolver($settings, $network_resolver);
         $rule_summary_builder       = new RuleSummaryBuilder($rule_resolver);
         $request_logger             = new RequestLogger($log_repository, $settings);
+        $debug_logger               = new DebugLogger();
         $matcher                    = new RuleMatcher($rule_repository);
         $access_evaluator           = new AccessEvaluator($settings, $trusted_wallet_repository, $trusted_ip_repository);
-        $provider_connection_tester = new ProviderConnectionTester(new CdpJwtEncoder(), $network_resolver, $wallet_validator);
+        $access_grants              = new AccessGrantService();
+        $jwt_encoder                = new CdpJwtEncoder();
+        $facilitator_resolver       = new X402FacilitatorResolver();
+        $facilitator_client         = new X402FacilitatorClient($facilitator_resolver, $jwt_encoder);
+        $provider_connection_tester = new ProviderConnectionTester($facilitator_client, $facilitator_resolver, $network_resolver, $wallet_validator);
+        $payment_profiles           = new X402PaymentProfileResolver($facilitator_resolver);
+        $header_codec               = new X402HeaderCodec();
+        $payment_flow               = new ProtectedPaymentFlow(
+            $settings,
+            $rule_repository,
+            $matcher,
+            $rule_resolver,
+            $rule_summary_builder,
+            $access_evaluator,
+            $access_grants,
+            $request_logger,
+            $debug_logger,
+            $facilitator_client,
+            $payment_profiles,
+            $header_codec
+        );
+        $checkout_renderer          = new CheckoutPageRenderer();
         $settings_validator         = new SettingsValidator($network_resolver, $wallet_validator);
         $rule_validator             = new RuleValidator();
         $trusted_wallet_validator   = new TrustedWalletValidator($wallet_validator);
@@ -109,15 +140,9 @@ final class Plugin
             1
         );
 
-        (new RuntimeController(
-            $settings,
-            $rule_repository,
-            $matcher,
-            $rule_resolver,
-            $rule_summary_builder,
-            $access_evaluator,
-            $request_logger
-        ))->boot();
+        (new UnlockController($payment_flow))->boot();
+
+        (new RuntimeController($payment_flow, $checkout_renderer))->boot();
 
         if (is_admin()) {
             (new AdminController(

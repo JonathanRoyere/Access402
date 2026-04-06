@@ -1,0 +1,16 @@
+{
+  "name": "access402-plugin",
+  "private": true,
+  "description": "Build tooling for the Access402 WordPress plugin browser checkout client.",
+  "scripts": {
+    "build:checkout": "esbuild assets/js/src/frontend-checkout.js --bundle --format=esm --platform=browser --target=es2020 --minify --outfile=assets/js/frontend-checkout.js"
+  },
+  "dependencies": {
+    "@x402/evm": "2.9.0",
+    "@x402/fetch": "2.9.0",
+    "viem": "2.47.10"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.4"
+  }
+}

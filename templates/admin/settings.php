@@ -24,9 +24,9 @@ declare(strict_types=1);
         <div class="access402-card-header">
             <div>
                 <h2><?php esc_html_e('Provider', 'access402'); ?></h2>
-                <p><?php esc_html_e('Coinbase CDP is fixed for v1. Test each environment separately before saving.', 'access402'); ?></p>
+                <p><?php esc_html_e('Live mode uses Coinbase CDP. Test mode automatically uses the public x402.org facilitator unless both test CDP credentials are present.', 'access402'); ?></p>
             </div>
-            <span class="access402-static-pill"><?php esc_html_e('Coinbase CDP', 'access402'); ?></span>
+            <span class="access402-static-pill"><?php esc_html_e('Auto by mode', 'access402'); ?></span>
         </div>
 
         <div class="access402-split-grid">
@@ -38,6 +38,15 @@ declare(strict_types=1);
                             <?php echo esc_html($connection_statuses[$settings[$mode . '_connection_status']] ?? $connection_statuses['not_tested']); ?>
                         </span>
                     </div>
+                    <p class="access402-inline-note">
+                        <?php
+                        echo esc_html(
+                            $mode === 'test'
+                                ? __('Leave test credentials empty to use the signup-free x402.org facilitator on Base Sepolia. Add both fields only if you want to test the authenticated CDP facilitator instead.', 'access402')
+                                : __('Live mode requires a CDP Secret API Key and Secret before Access402 can verify and settle payments.', 'access402')
+                        );
+                        ?>
+                    </p>
                     <label class="access402-field">
                         <span><?php echo esc_html($label . ' ' . __('API key', 'access402')); ?></span>
                         <input type="password" name="<?php echo esc_attr($mode); ?>_api_key" value="<?php echo esc_attr((string) $settings[$mode . '_api_key']); ?>" autocomplete="off" />
