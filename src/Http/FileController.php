@@ -30,16 +30,25 @@ final class FileController
         }
 
         $token = $this->protected_files->current_request_token();
+        $raw_path = $this->protected_files->current_raw_request_path();
 
-        if ($token === '') {
+        if ($token === '' && $raw_path === '') {
             return;
         }
 
-        $public_path = $this->protected_files->decode_path_token($token);
+        if ($raw_path !== '') {
+            $public_path = $raw_path;
+        } else {
+            $public_path = $this->protected_files->decode_path_token($token);
+        }
 
         if (is_wp_error($public_path)) {
             $this->send_json_error(404, $public_path->get_error_message());
         }
+
+        $charge_url = $raw_path !== ''
+            ? home_url((string) $public_path)
+            : $this->protected_files->protected_url_for_path((string) $public_path);
 
         $file = $this->protected_files->resolve_local_file($public_path);
 
@@ -48,14 +57,13 @@ final class FileController
         }
 
         $context       = $this->build_context();
-        $protected_url = $this->protected_files->protected_url_for_path((string) $public_path);
         $decision      = $this->payment_flow->evaluate(
             $context,
             (string) $public_path,
             [
                 'grant_path' => (string) $public_path,
                 'log_path'   => (string) $public_path,
-                'charge_url' => $protected_url,
+                'charge_url' => $charge_url,
             ]
         );
 
@@ -74,6 +82,7 @@ final class FileController
         }
 
         if ($context->accepts_json) {
+            header('Content-Type: application/json; charset=' . get_bloginfo('charset'), true);
             echo wp_json_encode(
                 [
                     'message' => (string) ($decision['message'] ?? __('Payment required.', 'access402')),
@@ -85,11 +94,12 @@ final class FileController
         }
 
         if ($status === 402 && is_array($decision['matched_rule'] ?? null) && is_array($decision['payment_profile'] ?? null)) {
+            header('Content-Type: text/html; charset=' . get_bloginfo('charset'), true);
             echo $this->checkout_renderer->render(
                 [
                     'app_name'          => get_bloginfo('name'),
                     'target_path'       => (string) $public_path,
-                    'target_url'        => $protected_url,
+                    'target_url'        => $charge_url,
                     'unlock_endpoint'   => rest_url(UnlockController::ROUTE_NAMESPACE . UnlockController::ROUTE_UNLOCK),
                     'summary'           => (string) ($decision['summary'] ?? $decision['message'] ?? ''),
                     'price'             => (string) (($decision['effective']['price'] ?? '')),
@@ -104,6 +114,7 @@ final class FileController
             exit;
         }
 
+        header('Content-Type: text/html; charset=' . get_bloginfo('charset'), true);
         echo $this->render_fallback_page(
             (string) ($decision['message'] ?? __('Payment required.', 'access402')),
             (array) ($decision['payload'] ?? [])

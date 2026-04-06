@@ -9,6 +9,7 @@ use Access402\Support\Helpers;
 final class ProtectedFileUrlService
 {
     public const QUERY_ARG = 'access402_file';
+    public const RAW_QUERY_ARG = 'access402_raw_file';
 
     public function __construct(private readonly RuleMatcher $matcher)
     {
@@ -19,6 +20,17 @@ final class ProtectedFileUrlService
         $value = $_GET[self::QUERY_ARG] ?? '';
 
         return sanitize_text_field(wp_unslash((string) $value));
+    }
+
+    public function current_raw_request_path(): string
+    {
+        $value = $_GET[self::RAW_QUERY_ARG] ?? '';
+
+        if (! is_string($value) || trim($value) === '') {
+            return '';
+        }
+
+        return Helpers::normalize_path(wp_unslash($value));
     }
 
     public function filter_attachment_url(string $url, int $attachment_id = 0): string
