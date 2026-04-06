@@ -217,9 +217,9 @@ final class RuntimeController
 
     private function build_rest_context(\WP_REST_Request $request): RequestContext
     {
-        $user   = wp_get_current_user();
         $method = isset($_SERVER['REQUEST_METHOD']) ? strtoupper(sanitize_text_field(wp_unslash((string) $_SERVER['REQUEST_METHOD']))) : 'GET';
         $route  = Helpers::normalize_path('/' . trim(rest_get_url_prefix(), '/') . '/' . ltrim($request->get_route(), '/'));
+        $roles  = $this->resolve_rest_user_roles($method);
 
         return new RequestContext(
             $route,
@@ -229,9 +229,40 @@ final class RuntimeController
             Helpers::request_ip(),
             Helpers::request_wallet_address(),
             Helpers::request_payment_signature(),
-            $user instanceof \WP_User ? (array) $user->roles : [],
+            $roles,
             true
         );
+    }
+
+    /**
+     * WordPress REST cookie auth clears the current user when a request lacks a REST nonce.
+     * For safe browser GET/HEAD requests, recover the logged-in cookie user so role bypasses
+     * still work on direct /wp-json/... visits.
+     *
+     * @return string[]
+     */
+    private function resolve_rest_user_roles(string $method): array
+    {
+        $user  = wp_get_current_user();
+        $roles = $user instanceof \WP_User ? array_values((array) $user->roles) : [];
+
+        if ($roles !== [] || ! in_array($method, ['GET', 'HEAD'], true)) {
+            return $roles;
+        }
+
+        $user_id = wp_validate_logged_in_cookie(false);
+
+        if (! is_int($user_id) || $user_id <= 0) {
+            return [];
+        }
+
+        $cookie_user = get_user_by('id', $user_id);
+
+        if (! $cookie_user instanceof \WP_User) {
+            return [];
+        }
+
+        return array_values((array) $cookie_user->roles);
     }
 
     private function render_fallback_page(string $message, array $payload): string

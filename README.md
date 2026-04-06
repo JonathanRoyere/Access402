@@ -2,19 +2,6 @@
 
 Access402 is a production-minded WordPress plugin for monetizing WordPress-routed paths with x402-style payment rules, global defaults, and trusted bypass controls.
 
-## What ships in v1
-
-- OOP-only PHP 8.1+ plugin architecture
-- Custom tables for rules, trusted wallets, trusted IPs, and request logs
-- Top-level admin tabs: Settings, Rules, Access, Logs
-- Global settings model with one source of truth in the WordPress options API
-- Path-based rules with exact and `*` wildcard matching
-- Drag-and-drop rule ordering with top-to-bottom precedence
-- Trusted role, wallet, and IP bypass before payment checks
-- Structured `PAYMENT-REQUIRED` responses for matched frontend paths, WordPress REST routes, and protected file downloads
-- Real `PAYMENT-SIGNATURE` verification and settlement through x402 facilitators
-- Built-in sandbox facilitator path through `x402.org` with no test API keys
-- Browser checkout flow built on the official `@x402/fetch` and `@x402/evm` libraries
 
 ## Installation
 
@@ -41,13 +28,7 @@ Global defaults live here:
 
 ### Rules
 
-Rules are intentionally path-first in v1:
 
-- Exact path support
-- `*` wildcard support
-- Table order decides precedence
-- Nullable price and unlock overrides
-- Slide-over add/edit flow with live summary preview
 
 ### Access
 
@@ -83,9 +64,6 @@ When a WordPress-routed request comes in, Access402:
 9. Matching file links can be proxied through Access402 and streamed only after the shared payment flow allows them.
 10. Logs bypass, payment-required, allowed, and runtime-error outcomes when logging is enabled.
 
-### Important v1 runtime note
-
-The admin and domain model intentionally still support `USDC`, `ETH`, and `SOL` because that is the broader product surface defined for v1. The real settled browser/runtime flow in this codebase is intentionally narrower today: it supports `USDC` on Base Sepolia in test mode and `USDC` on Base in live mode. If a rule resolves to `ETH` or `SOL`, the runtime now fails honestly with a configuration/runtime message instead of pretending an unsupported settlement happened.
 
 ### Real payment scope
 
