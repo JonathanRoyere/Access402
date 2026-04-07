@@ -36,9 +36,6 @@ declare(strict_types=1);
         <section class="access402-subcard">
             <div class="access402-subcard-head">
                 <h3><?php esc_html_e('Live', 'access402'); ?></h3>
-                <span class="access402-badge access402-badge-<?php echo esc_attr($settings['live_connection_status']); ?>" data-connection-badge="live">
-                    <?php echo esc_html($connection_statuses[$settings['live_connection_status']] ?? $connection_statuses['not_tested']); ?>
-                </span>
             </div>
             <p class="access402-inline-note">
                 <?php esc_html_e('Live mode requires a CDP Secret API Key and Secret before Access402 can verify and settle payments.', 'access402'); ?>
@@ -51,11 +48,6 @@ declare(strict_types=1);
                 <span><?php esc_html_e('Live API secret', 'access402'); ?></span>
                 <input type="password" name="live_api_secret" value="<?php echo esc_attr((string) $settings['live_api_secret']); ?>" autocomplete="off" />
             </label>
-            <button type="button" class="button" data-test-connection="live">
-                <?php esc_html_e('Test connection', 'access402'); ?>
-            </button>
-            <p class="access402-inline-note" data-connection-message="live"></p>
-            <input type="hidden" name="live_connection_status" value="<?php echo esc_attr((string) $settings['live_connection_status']); ?>" data-connection-input="live" />
         </section>
     </div>
 

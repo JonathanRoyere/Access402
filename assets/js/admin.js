@@ -192,48 +192,6 @@
             modeCheckbox.addEventListener('change', syncModePanels);
             syncModePanels();
         }
-
-        qsa('[data-test-connection]', settingsForm).forEach((button) => {
-            button.addEventListener('click', async () => {
-                const mode = button.dataset.testConnection;
-                const messageNode = qs(`[data-connection-message="${mode}"]`, settingsForm);
-                const badge = qs(`[data-connection-badge="${mode}"]`, settingsForm);
-                const hiddenInput = qs(`[data-connection-input="${mode}"]`, settingsForm);
-                const payload = {
-                    mode,
-                    default_currency: currencySelect.value,
-                    [`${mode}_api_key`]: qs(`[name="${mode}_api_key"]`, settingsForm)?.value || '',
-                    [`${mode}_api_secret`]: qs(`[name="${mode}_api_secret"]`, settingsForm)?.value || '',
-                    [`${mode}_wallet`]: qs(`[name="${mode}_wallet"]`, settingsForm)?.value || '',
-                };
-
-                button.disabled = true;
-                messageNode.textContent = 'Testing connection...';
-                messageNode.classList.remove('is-error', 'is-success');
-
-                try {
-                    const result = await post('access402_test_connection', payload);
-                    const label = app.connectionLabels[result.status] || result.status;
-
-                    if (badge) {
-                        badge.textContent = label;
-                        badge.className = `access402-badge access402-badge-${result.status}`;
-                    }
-
-                    if (hiddenInput) {
-                        hiddenInput.value = result.status;
-                    }
-
-                    messageNode.textContent = result.message;
-                    messageNode.classList.add(result.status === 'connected' ? 'is-success' : 'is-error');
-                } catch (error) {
-                    messageNode.textContent = error.message;
-                    messageNode.classList.add('is-error');
-                } finally {
-                    button.disabled = false;
-                }
-            });
-        });
     }
 
     const ruleForm = qs('[data-rule-form]');
@@ -243,7 +201,6 @@
         const titleNode = qs('[data-rule-panel-title]');
         const ruleRecords = app.ruleRecords || {};
         let summaryTimer = null;
-        let dragSource = null;
 
         const resetRuleForm = () => {
             ruleForm.reset();
@@ -387,47 +344,6 @@
                     window.location.reload();
                 } catch (error) {
                     renderNotice(error.message, 'error');
-                }
-            });
-        }
-
-        const tbody = qs('[data-rule-table-body]');
-
-        if (tbody) {
-            qsa('tr[data-rule-id]', tbody).forEach((row) => {
-                row.addEventListener('dragstart', () => {
-                    dragSource = row;
-                });
-
-                row.addEventListener('dragover', (event) => {
-                    event.preventDefault();
-                    if (!dragSource || dragSource === row) {
-                        return;
-                    }
-
-                    const rect = row.getBoundingClientRect();
-                    const before = event.clientY < rect.top + rect.height / 2;
-                    tbody.insertBefore(dragSource, before ? row : row.nextSibling);
-                });
-            });
-
-            tbody.addEventListener('drop', async (event) => {
-                event.preventDefault();
-
-                if (!dragSource) {
-                    return;
-                }
-
-                const orderedIds = qsa('tr[data-rule-id]', tbody).map((row) => row.dataset.ruleId);
-
-                try {
-                    await post('access402_reorder_rules', { ordered_ids: orderedIds });
-                    renderNotice('Rule order updated.');
-                    window.location.reload();
-                } catch (error) {
-                    renderNotice(error.message, 'error');
-                } finally {
-                    dragSource = null;
                 }
             });
         }

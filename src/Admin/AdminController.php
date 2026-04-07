@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Access402\Admin;
 
 use Access402\Capabilities;
-use Access402\Domain\ConnectionStatusOptions;
 use Access402\Domain\CurrencyOptions;
 use Access402\Domain\LogDecisionOptions;
 use Access402\Domain\LogModeOptions;
@@ -19,7 +18,6 @@ use Access402\Repositories\TrustedIpRepository;
 use Access402\Repositories\TrustedWalletRepository;
 use Access402\Services\EffectiveRuleConfigResolver;
 use Access402\Services\NetworkResolver;
-use Access402\Services\ProviderConnectionTester;
 use Access402\Services\RuleSummaryBuilder;
 use Access402\Services\RuleValidator;
 use Access402\Services\SettingsValidator;
@@ -41,7 +39,6 @@ final class AdminController
         private readonly LogRepository $logs,
         private readonly NetworkResolver $network_resolver,
         private readonly WalletValidator $wallet_validator,
-        private readonly ProviderConnectionTester $connection_tester,
         private readonly EffectiveRuleConfigResolver $rule_resolver,
         private readonly RuleSummaryBuilder $rule_summary_builder,
         private readonly SettingsValidator $settings_validator,
@@ -60,13 +57,11 @@ final class AdminController
         add_action('admin_post_access402_save_settings', [$this, 'save_settings']);
         add_action('admin_post_access402_save_access_settings', [$this, 'save_access_settings']);
 
-        add_action('wp_ajax_access402_test_connection', [$this, 'ajax_test_connection']);
         add_action('wp_ajax_access402_preview_rule_summary', [$this, 'ajax_preview_rule_summary']);
         add_action('wp_ajax_access402_save_rule', [$this, 'ajax_save_rule']);
         add_action('wp_ajax_access402_delete_rule', [$this, 'ajax_delete_rule']);
         add_action('wp_ajax_access402_toggle_rule_status', [$this, 'ajax_toggle_rule_status']);
         add_action('wp_ajax_access402_bulk_rules', [$this, 'ajax_bulk_rules']);
-        add_action('wp_ajax_access402_reorder_rules', [$this, 'ajax_reorder_rules']);
         add_action('wp_ajax_access402_save_trusted_wallet', [$this, 'ajax_save_trusted_wallet']);
         add_action('wp_ajax_access402_delete_trusted_wallet', [$this, 'ajax_delete_trusted_wallet']);
         add_action('wp_ajax_access402_toggle_trusted_wallet', [$this, 'ajax_toggle_trusted_wallet']);
@@ -104,7 +99,6 @@ final class AdminController
                 'nonce'   => wp_create_nonce(self::AJAX_NONCE_ACTION),
                 'networkByCurrency' => $this->network_resolver->map(),
                 'walletValidation'  => $this->wallet_validator->client_config(),
-                'connectionLabels'  => ConnectionStatusOptions::labels(),
                 'ruleUnlockOptions' => UnlockBehaviorOptions::labels(),
                 'ruleRecords'       => $this->records_by_id($this->rules->query(['per_page' => 200, 'page' => 1])),
                 'trustedWallets'    => $this->records_by_id($this->trusted_wallets->query()),
@@ -182,20 +176,6 @@ final class AdminController
         $this->settings->set_notice('success', __('Access settings saved.', 'access402'));
         wp_safe_redirect(Helpers::admin_url(['tab' => 'access']));
         exit;
-    }
-
-    public function ajax_test_connection(): void
-    {
-        $this->verify_ajax_request();
-
-        $mode = sanitize_key((string) ($_POST['mode'] ?? 'live'));
-
-        if ($mode !== 'live') {
-            wp_send_json_error(['message' => __('Live mode is the only configurable provider connection in v1.', 'access402')], 400);
-        }
-
-        $result = $this->connection_tester->test($mode, array_map('wp_unslash', $_POST));
-        wp_send_json_success($result);
     }
 
     public function ajax_preview_rule_summary(): void
@@ -292,20 +272,6 @@ final class AdminController
         wp_send_json_success(['message' => __('Bulk action applied.', 'access402')]);
     }
 
-    public function ajax_reorder_rules(): void
-    {
-        $this->verify_ajax_request();
-
-        $ids = array_values(array_filter(array_map('absint', (array) ($_POST['ordered_ids'] ?? []))));
-
-        if ($ids === []) {
-            wp_send_json_error(['message' => __('No rule order was submitted.', 'access402')], 400);
-        }
-
-        $this->rules->update_order($ids);
-        wp_send_json_success(['message' => __('Rule order updated.', 'access402')]);
-    }
-
     public function ajax_save_trusted_wallet(): void
     {
         $this->verify_ajax_request();
@@ -397,7 +363,6 @@ final class AdminController
                 'settings'           => $settings,
                 'currency_options'   => CurrencyOptions::labels(),
                 'unlock_options'     => UnlockBehaviorOptions::labels(),
-                'connection_statuses'=> ConnectionStatusOptions::labels(),
                 'network'            => $this->network_resolver->resolve((string) $settings['default_currency']),
             ],
             'rules' => $this->rules_context(),

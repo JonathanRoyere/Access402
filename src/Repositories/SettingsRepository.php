@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Access402\Repositories;
 
-use Access402\Domain\ConnectionStatusOptions;
 use Access402\Domain\CurrencyOptions;
 use Access402\Domain\NetworkOptions;
 use Access402\Domain\UnlockBehaviorOptions;
@@ -23,7 +22,6 @@ final class SettingsRepository
             'provider'               => 'coinbase_cdp',
             'live_api_key'           => '',
             'live_api_secret'        => '',
-            'live_connection_status' => ConnectionStatusOptions::NOT_TESTED,
             'test_wallet'            => '',
             'live_wallet'            => '',
             'default_currency'       => CurrencyOptions::USDC,
@@ -60,7 +58,7 @@ final class SettingsRepository
     {
         $settings = array_merge($this->all(), $values);
 
-        unset($settings['test_api_key'], $settings['test_api_secret'], $settings['test_connection_status']);
+        unset($settings['test_api_key'], $settings['test_api_secret'], $settings['test_connection_status'], $settings['live_connection_status']);
 
         update_option(self::OPTION_KEY, $settings, false);
     }

@@ -8,6 +8,12 @@ use Access402\Support\Helpers;
 
 final class LogRepository extends AbstractRepository
 {
+    private const DEDUPE_SIGNATURE_FIELDS = [
+        'matched_rule_id',
+        'wallet_address',
+        'message',
+    ];
+
     protected function table_suffix(): string
     {
         return 'request_logs';
@@ -45,7 +51,7 @@ final class LogRepository extends AbstractRepository
             ]
         );
 
-        [$where, $params] = $this->build_where($args);
+        [$where, $params] = $this->build_where($args, 'logs');
         $limit            = max(1, (int) $args['per_page']);
         $offset           = max(0, ((int) $args['page'] - 1) * $limit);
         $rules_table      = Helpers::table('rules');
@@ -75,20 +81,72 @@ final class LogRepository extends AbstractRepository
         return (int) $this->wpdb->get_var($this->wpdb->prepare($sql, $params));
     }
 
-    private function build_where(array $args): array
+    public function has_recent_duplicate(array $data, int $window_seconds = 10): bool
     {
+        $path     = Helpers::normalize_path((string) ($data['path'] ?? '/'));
+        $decision = sanitize_key((string) ($data['decision'] ?? ''));
+        $mode     = sanitize_key((string) ($data['mode'] ?? 'test'));
+
+        if ($path === '' || $decision === '' || $mode === '') {
+            return false;
+        }
+
+        $sql = $this->wpdb->prepare(
+            "
+                SELECT *
+                FROM {$this->table()}
+                WHERE path = %s
+                    AND decision = %s
+                    AND mode = %s
+                ORDER BY logged_at DESC, id DESC
+                LIMIT 1
+            ",
+            $path,
+            $decision,
+            $mode
+        );
+        $row = $this->wpdb->get_row($sql, ARRAY_A);
+
+        if (! is_array($row)) {
+            return false;
+        }
+
+        foreach (self::DEDUPE_SIGNATURE_FIELDS as $field) {
+            if ((string) ($row[$field] ?? '') !== (string) ($data[$field] ?? '')) {
+                return false;
+            }
+        }
+
+        $logged_at = strtotime((string) ($row['logged_at'] ?? ''));
+
+        if (! is_int($logged_at)) {
+            return false;
+        }
+
+        return $logged_at >= (time() - max(1, $window_seconds));
+    }
+
+    private function build_where(array $args, string $alias = ''): array
+    {
+        $column = static fn (string $name): string => $alias !== '' ? "{$alias}.{$name}" : $name;
         $where  = ['1=1'];
         $params = [];
 
+        $where[] = $column('path') . " <> ''";
+        $where[] = $column('path') . " <> '/'";
+        $where[] = $column('path') . " <> '/robots.txt'";
+        $where[] = $column('path') . " NOT LIKE '/favicon%'";
+        $where[] = $column('path') . " NOT LIKE '/apple-touch-icon%'";
+
         if (! empty($args['search_path'])) {
             $like    = '%' . $this->wpdb->esc_like((string) $args['search_path']) . '%';
-            $where[] = 'path LIKE %s';
+            $where[] = $column('path') . ' LIKE %s';
             $params[] = $like;
         }
 
         foreach (['decision', 'mode'] as $key) {
             if (! empty($args[$key])) {
-                $where[]  = "{$key} = %s";
+                $where[]  = $column($key) . ' = %s';
                 $params[] = (string) $args[$key];
             }
         }

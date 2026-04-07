@@ -22,7 +22,6 @@ use Access402\Services\DebugLogger;
 use Access402\Services\EffectiveRuleConfigResolver;
 use Access402\Services\NetworkResolver;
 use Access402\Services\ProtectedPaymentFlow;
-use Access402\Services\ProviderConnectionTester;
 use Access402\Services\ProtectedFileUrlService;
 use Access402\Services\RequestLogger;
 use Access402\Services\RuleMatcher;
@@ -109,7 +108,6 @@ final class Plugin
         $jwt_encoder                = new CdpJwtEncoder();
         $facilitator_resolver       = new X402FacilitatorResolver();
         $facilitator_client         = new X402FacilitatorClient($facilitator_resolver, $jwt_encoder);
-        $provider_connection_tester = new ProviderConnectionTester($facilitator_client, $facilitator_resolver, $network_resolver, $wallet_validator);
         $payment_profiles           = new X402PaymentProfileResolver($facilitator_resolver);
         $protected_file_urls        = new ProtectedFileUrlService($matcher);
         $header_codec               = new X402HeaderCodec();
@@ -162,7 +160,6 @@ final class Plugin
                 $log_repository,
                 $network_resolver,
                 $wallet_validator,
-                $provider_connection_tester,
                 $rule_resolver,
                 $rule_summary_builder,
                 $settings_validator,

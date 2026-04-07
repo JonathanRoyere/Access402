@@ -309,12 +309,6 @@
     color: var(--a402-muted);
 }
 
-.access402-drag-handle {
-    cursor: grab;
-    color: #64748b;
-    font-weight: 700;
-}
-
 .access402-role-grid {
     display: grid;
     gap: 12px;

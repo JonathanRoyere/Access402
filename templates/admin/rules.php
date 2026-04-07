@@ -7,7 +7,7 @@ declare(strict_types=1);
         <div class="access402-card-header access402-card-header-wide">
             <div>
                 <h2><?php esc_html_e('Rules', 'access402'); ?></h2>
-                <p><?php esc_html_e('Rules are evaluated from top to bottom. Table order is precedence.', 'access402'); ?></p>
+                <p><?php esc_html_e('Rules are evaluated from top to bottom.', 'access402'); ?></p>
             </div>
             <button type="button" class="button button-primary" data-open-panel="rule"><?php esc_html_e('Add Rule', 'access402'); ?></button>
         </div>
@@ -57,11 +57,11 @@ declare(strict_types=1);
                         <th><?php esc_html_e('Actions', 'access402'); ?></th>
                     </tr>
                 </thead>
-                <tbody data-rule-table-body>
+                <tbody>
                     <?php foreach ($records as $record) : ?>
-                        <tr draggable="true" data-rule-id="<?php echo esc_attr((string) $record['id']); ?>">
+                        <tr data-rule-id="<?php echo esc_attr((string) $record['id']); ?>">
                             <th class="check-column"><input type="checkbox" value="<?php echo esc_attr((string) $record['id']); ?>" data-rule-checkbox /></th>
-                            <td><span class="access402-drag-handle">⋮⋮</span> <?php echo esc_html((string) $record['sort_order']); ?></td>
+                            <td><?php echo esc_html((string) $record['sort_order']); ?></td>
                             <td>
                                 <strong><?php echo esc_html((string) $record['name']); ?></strong>
                                 <div class="access402-microcopy"><?php echo esc_html((string) $record['summary']); ?></div>

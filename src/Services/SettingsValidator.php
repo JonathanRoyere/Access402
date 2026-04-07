@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Access402\Services;
 
-use Access402\Domain\ConnectionStatusOptions;
 use Access402\Domain\CurrencyOptions;
 use Access402\Domain\UnlockBehaviorOptions;
 use Access402\Support\Helpers;
@@ -59,12 +58,6 @@ final class SettingsValidator
             }
         }
 
-        $live_connection_status = sanitize_key((string) ($input['live_connection_status'] ?? $existing['live_connection_status'] ?? ConnectionStatusOptions::NOT_TESTED));
-
-        if (! ConnectionStatusOptions::is_valid($live_connection_status)) {
-            $live_connection_status = ConnectionStatusOptions::NOT_TESTED;
-        }
-
         return [
             'data' => [
                 'test_mode'               => Helpers::bool($input['test_mode'] ?? false) ? 1 : 0,
@@ -73,7 +66,6 @@ final class SettingsValidator
                 'test_api_secret'         => '',
                 'live_api_key'            => trim((string) ($input['live_api_key'] ?? '')),
                 'live_api_secret'         => $this->normalize_secret((string) ($input['live_api_secret'] ?? '')),
-                'live_connection_status'  => $live_connection_status,
                 'test_wallet'             => $test_wallet,
                 'live_wallet'             => $live_wallet,
                 'default_currency'        => $currency,

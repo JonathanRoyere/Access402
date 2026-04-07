@@ -96,7 +96,7 @@ final class ProtectedPaymentFlow
                 $this->access_grants->consume_if_needed($grant);
             }
 
-            $message = __('A previously settled browser grant unlocked this request.', 'access402');
+            $message = __('Access granted.', 'access402');
 
             $this->logger->maybe_log(
                 [
@@ -429,7 +429,7 @@ final class ProtectedPaymentFlow
                 'decision'        => LogDecisionOptions::PAYMENT_REQUIRED,
                 'wallet_address'  => $context->wallet_address ?: null,
                 'mode'            => (string) $effective['mode'],
-                'message'         => $summary,
+                'message'         => __('Payment required.', 'access402'),
             ]
         );
 
@@ -562,14 +562,13 @@ final class ProtectedPaymentFlow
 
     private function success_log_message(array $settle_response, array $payment_profile): string
     {
-        $transaction = trim((string) ($settle_response['transaction'] ?? ''));
         $network     = trim((string) ($payment_profile['network_label'] ?? $settle_response['network'] ?? ''));
 
-        if ($transaction === '') {
-            return sprintf(__('Payment settled successfully on %s.', 'access402'), $network !== '' ? $network : __('the configured network', 'access402'));
+        if ($network === '') {
+            return __('Payment settled.', 'access402');
         }
 
-        return sprintf(__('Payment settled successfully on %1$s in transaction %2$s.', 'access402'), $network !== '' ? $network : __('the configured network', 'access402'), $transaction);
+        return sprintf(__('Payment settled on %s.', 'access402'), $network);
     }
 
     private function payment_message(array $response_body, string $fallback): string

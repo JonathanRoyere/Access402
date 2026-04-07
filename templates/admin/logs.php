@@ -6,7 +6,7 @@ declare(strict_types=1);
     <div class="access402-card-header">
         <div>
             <h2><?php esc_html_e('Logs', 'access402'); ?></h2>
-            <p><?php esc_html_e('Review request activity across allowed, bypassed, payment-required, and error decisions.', 'access402'); ?></p>
+            <p><?php esc_html_e('Review payment, bypass, and error activity for meaningful requests.', 'access402'); ?></p>
         </div>
     </div>
 
