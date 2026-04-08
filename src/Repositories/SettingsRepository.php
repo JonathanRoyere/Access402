@@ -22,6 +22,7 @@ final class SettingsRepository
             'provider'               => 'coinbase_cdp',
             'live_api_key'           => '',
             'live_api_secret'        => '',
+            'walletconnect_project_id' => '',
             'test_wallet'            => '',
             'live_wallet'            => '',
             'default_currency'       => CurrencyOptions::USDC,

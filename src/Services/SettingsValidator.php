@@ -66,6 +66,7 @@ final class SettingsValidator
                 'test_api_secret'         => '',
                 'live_api_key'            => trim((string) ($input['live_api_key'] ?? '')),
                 'live_api_secret'         => $this->normalize_secret((string) ($input['live_api_secret'] ?? '')),
+                'walletconnect_project_id'=> preg_replace('/\s+/', '', trim((string) ($input['walletconnect_project_id'] ?? ''))) ?: '',
                 'test_wallet'             => $test_wallet,
                 'live_wallet'             => $live_wallet,
                 'default_currency'        => $currency,

@@ -132,6 +132,7 @@ uninstall.php
 ### Upstream dependency provenance
 
 - `assets/js/frontend-checkout.js` is bundled from the official npm packages `@x402/fetch@2.9.0` and `@x402/evm@2.9.0`.
+- WalletConnect support uses the official `@walletconnect/ethereum-provider` package and requires a Reown project ID in plugin settings.
 - The local wrapper source lives in `assets/js/src/frontend-checkout.js`.
 - Provenance details are recorded in `assets/js/UPSTREAM.md`.
 - Rebuild with `npm run build:checkout`.
@@ -159,4 +160,3 @@ uninstall.php
 ## Safe uninstall
 
 Uninstall is non-destructive by default. Data is only removed when `ACCESS402_UNINSTALL_REMOVE_DATA` is defined and truthy, or when the `access402_cleanup_on_uninstall` filter returns `true`.
-

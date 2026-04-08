@@ -6,6 +6,7 @@
     "build:checkout": "esbuild assets/js/src/frontend-checkout.js --bundle --format=esm --platform=browser --target=es2020 --minify --outfile=assets/js/frontend-checkout.js"
   },
   "dependencies": {
+    "@walletconnect/ethereum-provider": "^2.23.9",
     "@x402/evm": "2.9.0",
     "@x402/fetch": "2.9.0",
     "viem": "2.47.10"

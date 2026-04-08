@@ -125,7 +125,7 @@ final class Plugin
             $payment_profiles,
             $header_codec
         );
-        $checkout_renderer          = new CheckoutPageRenderer();
+        $checkout_renderer          = new CheckoutPageRenderer($settings);
         $settings_validator         = new SettingsValidator($network_resolver, $wallet_validator);
         $rule_validator             = new RuleValidator();
         $trusted_wallet_validator   = new TrustedWalletValidator($wallet_validator);

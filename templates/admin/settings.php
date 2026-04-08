@@ -24,9 +24,9 @@ declare(strict_types=1);
         <div class="access402-card-header">
             <div>
                 <h2><?php esc_html_e('Provider', 'access402'); ?></h2>
-                <p><?php esc_html_e('Sandbox mode uses the public x402.org facilitator on Base Sepolia automatically. Only live mode needs provider configuration here.', 'access402'); ?></p>
+                <p><?php esc_html_e('Sandbox mode uses the public x402.org facilitator on Base Sepolia automatically. Live mode needs CDP credentials here, and WalletConnect can be enabled for browser checkout in either mode.', 'access402'); ?></p>
             </div>
-            <span class="access402-static-pill"><?php esc_html_e('Live only', 'access402'); ?></span>
+            <span class="access402-static-pill"><?php esc_html_e('Global + live', 'access402'); ?></span>
         </div>
 
         <p class="access402-inline-note">
@@ -47,6 +47,11 @@ declare(strict_types=1);
             <label class="access402-field">
                 <span><?php esc_html_e('Live API secret', 'access402'); ?></span>
                 <input type="password" name="live_api_secret" value="<?php echo esc_attr((string) $settings['live_api_secret']); ?>" autocomplete="off" />
+            </label>
+            <label class="access402-field">
+                <span><?php esc_html_e('WalletConnect project ID', 'access402'); ?></span>
+                <input type="text" name="walletconnect_project_id" value="<?php echo esc_attr((string) ($settings['walletconnect_project_id'] ?? '')); ?>" autocomplete="off" />
+                <small><?php esc_html_e('Optional. Add your Reown project ID to enable WalletConnect QR and mobile wallets in the browser checkout for both test and live mode.', 'access402'); ?></small>
             </label>
         </section>
     </div>

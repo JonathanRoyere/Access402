@@ -1,5 +1,6 @@
 import { decodePaymentResponseHeader, wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { registerExactEvmScheme } from "@x402/evm/exact/client";
+import { EthereumProvider } from "@walletconnect/ethereum-provider";
 import { createWalletClient, custom } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
@@ -15,9 +16,11 @@ const connectedEl = root.getElementById("access402-connected");
 const state = {
   providers: [],
   selectedProvider: null,
+  selectedId: "",
   selectedInfo: null,
   account: "",
   busy: false,
+  walletConnectProvider: null,
 };
 
 function setStatus(message, tone = "") {
@@ -53,6 +56,16 @@ function chainHexFromCaip(networkId) {
   }
 
   return `0x${Number(match[1]).toString(16)}`;
+}
+
+function chainIdFromCaip(networkId) {
+  const match = String(networkId || "").match(/^eip155:(\d+)$/);
+
+  if (!match) {
+    return 0;
+  }
+
+  return Number(match[1]);
 }
 
 function networkConfigFromCaip(networkId) {
@@ -103,6 +116,20 @@ function viemChainFromCaip(networkId) {
   return undefined;
 }
 
+function rpcMapFromCaip(networkId) {
+  const chainId = chainIdFromCaip(networkId);
+  const networkConfig = networkConfigFromCaip(networkId);
+  const rpcUrl = networkConfig && Array.isArray(networkConfig.rpcUrls) ? String(networkConfig.rpcUrls[0] || "") : "";
+
+  if (!chainId || !rpcUrl) {
+    return undefined;
+  }
+
+  return {
+    [chainId]: rpcUrl,
+  };
+}
+
 function providerLabel(provider, info = {}) {
   if (info && info.name) {
     return String(info.name);
@@ -149,10 +176,36 @@ function addProvider(provider, info = {}) {
   state.providers.push({
     id: providerId(provider, info),
     provider,
+    connector: "injected",
     info: {
       name: providerLabel(provider, info),
       icon: info.icon || "",
       rdns: info.rdns || "",
+    },
+  });
+}
+
+function ensureWalletConnectOption() {
+  const projectId = String(boot.walletConnectProjectId || "").trim();
+
+  if (!projectId) {
+    return;
+  }
+
+  const exists = state.providers.some((entry) => entry.id === "walletconnect");
+
+  if (exists) {
+    return;
+  }
+
+  state.providers.push({
+    id: "walletconnect",
+    provider: null,
+    connector: "walletconnect",
+    info: {
+      name: "WalletConnect",
+      icon: "",
+      rdns: "walletconnect",
     },
   });
 }
@@ -177,6 +230,7 @@ function renderProviders() {
     return;
   }
 
+  ensureWalletConnectOption();
   walletsEl.innerHTML = "";
 
   if (state.providers.length === 0) {
@@ -205,7 +259,7 @@ function renderProviders() {
 
     const status = document.createElement("span");
     status.className = "access402-wallet-status";
-    status.textContent = state.selectedProvider === entry.provider ? "Connected" : "Connect";
+    status.textContent = state.selectedId === entry.id ? "Connected" : "Connect";
 
     meta.appendChild(name);
     meta.appendChild(status);
@@ -317,6 +371,11 @@ async function connectProvider(entry) {
     return;
   }
 
+  if (entry.connector === "walletconnect") {
+    await connectWalletConnect(entry);
+    return;
+  }
+
   try {
     state.busy = true;
     setStatus(strings.connectingWallet || "Connecting wallet…");
@@ -332,6 +391,98 @@ async function connectProvider(entry) {
     await ensureRequiredNetwork(entry.provider);
 
     state.selectedProvider = entry.provider;
+    state.selectedId = entry.id;
+    state.selectedInfo = entry.info;
+    state.account = account;
+    setStatus(`${entry.info.name} connected. Ready to pay.`, "success");
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : strings.genericError || "The payment could not be completed.", "error");
+  } finally {
+    state.busy = false;
+    render();
+  }
+}
+
+async function getWalletConnectProvider() {
+  if (state.walletConnectProvider) {
+    return state.walletConnectProvider;
+  }
+
+  const projectId = String(boot.walletConnectProjectId || "").trim();
+
+  if (!projectId) {
+    throw new Error(strings.walletConnectMissingProjectId || "WalletConnect is not configured for this site yet.");
+  }
+
+  const networkId = String(boot.payment && boot.payment.networkId ? boot.payment.networkId : "").trim();
+  const chainId = chainIdFromCaip(networkId);
+  const provider = await EthereumProvider.init({
+    projectId,
+    showQrModal: true,
+    optionalChains: chainId ? [chainId] : undefined,
+    rpcMap: rpcMapFromCaip(networkId),
+    metadata: {
+      name: String(boot.siteName || "Access402"),
+      description: "Access402 wallet checkout",
+      url: String(boot.siteUrl || window.location.origin),
+      icons: boot.siteIcon ? [String(boot.siteIcon)] : [],
+    },
+  });
+
+  provider.on("accountsChanged", (accounts) => {
+    if (state.selectedId !== "walletconnect") {
+      return;
+    }
+
+    const account = Array.isArray(accounts) ? String(accounts[0] || "") : "";
+    state.account = account;
+
+    if (account === "") {
+      state.selectedProvider = null;
+      state.selectedId = "";
+      state.selectedInfo = null;
+      setStatus(strings.walletDisconnected || "Wallet disconnected.");
+    }
+
+    render();
+  });
+
+  provider.on("disconnect", () => {
+    if (state.selectedId !== "walletconnect") {
+      return;
+    }
+
+    state.selectedProvider = null;
+    state.selectedId = "";
+    state.selectedInfo = null;
+    state.account = "";
+    setStatus(strings.walletDisconnected || "Wallet disconnected.");
+    render();
+  });
+
+  state.walletConnectProvider = provider;
+
+  return provider;
+}
+
+async function connectWalletConnect(entry) {
+  try {
+    state.busy = true;
+    setStatus(strings.connectingWallet || "Connecting wallet…");
+    renderPayButton();
+
+    const provider = await getWalletConnectProvider();
+    const accounts = await provider.enable();
+    const account = Array.isArray(accounts) ? String(accounts[0] || "") : String(provider.accounts?.[0] || "");
+
+    if (!account) {
+      throw new Error(strings.walletRequired || "Connect a wallet before paying for access.");
+    }
+
+    await ensureRequiredNetwork(provider);
+
+    state.selectedProvider = provider;
+    state.selectedId = entry.id;
     state.selectedInfo = entry.info;
     state.account = account;
     setStatus(`${entry.info.name} connected. Ready to pay.`, "success");
@@ -478,6 +629,7 @@ function discoverProviders() {
 
   window.addEventListener("eip6963:announceProvider", listener);
   collectInjectedProviders();
+  ensureWalletConnectOption();
 
   try {
     window.dispatchEvent(new Event("eip6963:requestProvider"));
@@ -491,6 +643,7 @@ function discoverProviders() {
       collectInjectedProviders();
     }
 
+    ensureWalletConnectOption();
     render();
   }, 220);
 }

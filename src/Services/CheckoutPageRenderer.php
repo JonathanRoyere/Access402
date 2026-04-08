@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace Access402\Services;
 
+use Access402\Repositories\SettingsRepository;
 use Access402\Support\Helpers;
 
 final class CheckoutPageRenderer
 {
+    public function __construct(private readonly SettingsRepository $settings)
+    {
+    }
+
     public function render(array $context): string
     {
+        $settings = $this->settings->all();
         $target_path = Helpers::normalize_path((string) ($context['target_path'] ?? '/'));
         $target_url = (string) ($context['target_url'] ?? home_url($target_path));
         $unlock_endpoint = (string) ($context['unlock_endpoint'] ?? rest_url('access402/v1/unlock'));
@@ -22,6 +28,9 @@ final class CheckoutPageRenderer
         $facilitator = (string) ($context['facilitator_label'] ?? '');
         $rule_name = trim((string) ($context['rule_name'] ?? ''));
         $app_name = (string) ($context['app_name'] ?? get_bloginfo('name'));
+        $site_url = home_url('/');
+        $site_icon = get_site_icon_url(192) ?: '';
+        $walletconnect_project_id = trim((string) ($settings['walletconnect_project_id'] ?? ''));
         $module_url = esc_url(ACCESS402_PLUGIN_URL . 'assets/js/frontend-checkout.js?ver=' . rawurlencode(ACCESS402_VERSION));
         $title = $rule_name !== '' ? $rule_name : sprintf(__('Unlock %s', 'access402'), $target_path);
         $amount_label = trim($price . ($currency !== '' ? ' ' . $currency : ''));
@@ -45,6 +54,9 @@ final class CheckoutPageRenderer
             ],
             'summary' => $summary,
             'siteName' => $app_name,
+            'siteUrl' => $site_url,
+            'siteIcon' => $site_icon,
+            'walletConnectProjectId' => $walletconnect_project_id,
             'strings' => [
                 'missingProvider' => __('No compatible browser wallet was detected. Install or enable MetaMask or Coinbase Wallet and reload this page.', 'access402'),
                 'walletRequired' => __('Connect a wallet before paying for access.', 'access402'),
@@ -54,6 +66,8 @@ final class CheckoutPageRenderer
                 'unlocking' => __('Payment settled. Unlocking the page…', 'access402'),
                 'paid' => __('Access unlocked. Reloading…', 'access402'),
                 'wrongNetwork' => __('This payment requires the configured network in your wallet.', 'access402'),
+                'walletDisconnected' => __('Wallet disconnected.', 'access402'),
+                'walletConnectMissingProjectId' => __('WalletConnect is not configured for this site yet.', 'access402'),
                 'genericError' => __('The payment could not be completed.', 'access402'),
             ],
         ];
