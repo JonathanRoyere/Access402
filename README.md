@@ -1,6 +1,6 @@
 # Access402
 
-<img src="assets/logo.jpg" alt="Access402 logo" width="160">
+<img src="assets/images/logo.jpg" alt="Access402 logo" width="160">
 
 Access402 is a open source WordPress plugin designed for monetizing your content, API routes and files mainly from AI Agents using x402 payment rules.
 

@@ -5,7 +5,8 @@ declare(strict_types=1);
 <div class="wrap access402-admin">
     <div class="access402-page-head">
         <div class="access402-brand">
-            <img class="access402-brand-logo" src="<?php echo esc_url(ACCESS402_PLUGIN_URL . 'assets/logo.jpg'); ?>"
+            <img class="access402-brand-logo"
+                src="<?php echo esc_url(ACCESS402_PLUGIN_URL . 'assets/images/logo.png'); ?>"
                 alt="<?php esc_attr_e('Access402 logo', 'access402'); ?>" />
             <div>
                 <h1><?php esc_html_e('Access402', 'access402'); ?></h1>
