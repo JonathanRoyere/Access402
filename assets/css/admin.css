@@ -22,8 +22,22 @@
     margin: 20px 0 18px;
 }
 
+.access402-admin .access402-brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.access402-admin .access402-brand-logo {
+    display: block;
+    max-width: 80px;
+    height: auto;
+}
+
 .access402-admin .access402-page-head h1 {
-    margin: 0 0 6px;
+    margin: 0 0 4px 0;
+    line-height: 1;
+    padding-top: 0;
     font-size: 30px;
 }
 
@@ -32,6 +46,16 @@
     max-width: 860px;
     color: var(--a402-muted);
     font-size: 15px;
+}
+
+@media (max-width: 782px) {
+    .access402-admin .access402-brand {
+        align-items: flex-start;
+    }
+
+    .access402-admin .access402-brand-logo {
+        max-width: 64px;
+    }
 }
 
 .access402-admin .access402-screen {
@@ -132,7 +156,7 @@
     margin-bottom: 14px;
 }
 
-.access402-field > span {
+.access402-field>span {
     color: var(--a402-text);
     font-weight: 600;
 }
@@ -227,11 +251,11 @@
     transition: transform 0.2s ease;
 }
 
-.access402-toggle input:checked + span {
+.access402-toggle input:checked+span {
     background: var(--a402-primary);
 }
 
-.access402-toggle input:checked + span::after {
+.access402-toggle input:checked+span::after {
     transform: translateX(20px);
 }
 

@@ -31,6 +31,7 @@ final class CheckoutPageRenderer
         $site_url = home_url('/');
         $site_icon = get_site_icon_url(192) ?: '';
         $walletconnect_project_id = trim((string) ($settings['walletconnect_project_id'] ?? ''));
+        $logo_url = ACCESS402_PLUGIN_URL . 'assets/logo.jpg';
         $module_url = esc_url(ACCESS402_PLUGIN_URL . 'assets/js/frontend-checkout.js?ver=' . rawurlencode(ACCESS402_VERSION));
         $title = $rule_name !== '' ? $rule_name : sprintf(__('Unlock %s', 'access402'), $target_path);
         $amount_label = trim($price . ($currency !== '' ? ' ' . $currency : ''));
@@ -134,6 +135,19 @@ final class CheckoutPageRenderer
                     font-weight: 700;
                     letter-spacing: 0.08em;
                     text-transform: uppercase;
+                }
+
+                .access402-brand {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 14px;
+                    margin-bottom: 16px;
+                }
+
+                .access402-brand-logo {
+                    display: block;
+                    max-width: 80px;
+                    height: auto;
                 }
 
                 h1 {
@@ -304,6 +318,10 @@ final class CheckoutPageRenderer
                     .access402-grid {
                         grid-template-columns: 1fr;
                     }
+
+                    .access402-brand-logo {
+                        max-width: 64px;
+                    }
                 }
             </style>
         </head>
@@ -313,7 +331,10 @@ final class CheckoutPageRenderer
                 <div class="access402-card">
                     <div class="access402-grid">
                         <section>
-                            <p class="access402-kicker"><?php esc_html_e('Access402 Protected Resource', 'access402'); ?></p>
+                            <div class="access402-brand">
+                                <img class="access402-brand-logo" src="<?php echo esc_url($logo_url); ?>" alt="<?php esc_attr_e('Access402 logo', 'access402'); ?>" />
+                                <p class="access402-kicker"><?php esc_html_e('Access402 Protected Resource', 'access402'); ?></p>
+                            </div>
                             <h1><?php esc_html_e('Pay with your wallet to continue', 'access402'); ?></h1>
                             <p class="access402-copy">
                                 <?php esc_html_e('This resource is protected with x402. Connect a compatible browser wallet, approve the payment, and Access402 will unlock the request as soon as the settlement succeeds.', 'access402'); ?>
