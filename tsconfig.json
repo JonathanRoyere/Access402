@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/express" },
+    { "path": "./packages/fetch" },
+    { "path": "./packages/storage-memory" },
+    { "path": "./packages/storage-redis" },
+    { "path": "./packages/testing" }
+  ]
+}
