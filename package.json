@@ -1,0 +1,22 @@
+{
+  "name": "access402",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty",
+    "clean": "find packages -name dist -type d -prune -exec rm -rf {} + && find . -name '*.tsbuildinfo' -delete",
+    "smoke": "node work/smoke-test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
