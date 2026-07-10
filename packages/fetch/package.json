@@ -1,0 +1,21 @@
+{
+  "name": "@access402/fetch",
+  "version": "0.0.0",
+  "description": "Fetch helper package for Access402.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@access402/core": "0.0.0"
+  }
+}

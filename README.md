@@ -121,22 +121,24 @@ That separation keeps the important logic framework-independent.
 
 ## Current Status
 
-Access402 is in early development.
+Access402 is in early development and is currently a structural scaffold.
 
 Currently implemented:
 
 - Monorepo package layout
-- Core types and interfaces
-- Route matching
-- Payment gate flow
-- In-memory storage adapter
-- Express adapter shell
-- Buyer fetch helper shell
-- Fake testing utilities
-- Smoke test scenarios
+- Root npm workspace configuration
+- Shared TypeScript configuration
+- Package-level TypeScript project references
+- Package manifests and export surfaces
+- Structural smoke test for repo shape
 
 Not implemented yet:
 
+- Core payment logic
+- Storage interfaces and adapters
+- Express integration behavior
+- Fetch payment retry behavior
+- Testing helpers beyond the workspace scaffold
 - Real facilitator adapter
 - Real Redis adapter
 - Final x402 wire-format compatibility
@@ -156,20 +158,13 @@ npm run build
 Run a smoke test:
 
 ```bash
-npm run smoke -- success
+npm run smoke
 ```
 
-Other useful scenarios:
+Structural smoke with any scenario name currently behaves the same way and only checks repo layout:
 
 ```bash
-npm run smoke -- paymentRequired
-npm run smoke -- invalid
-npm run smoke -- unresolved
-npm run smoke -- replay
-npm run smoke -- locked
-npm run smoke -- wrongNetwork
-npm run smoke -- wrongAmount
-npm run smoke -- handlerFailure
+npm run smoke -- success
 ```
 
 ## Repo Structure
