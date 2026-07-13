@@ -44,6 +44,10 @@ class MockPaymentFacilitator {
     reason: "verification_pending"
   };
   settleCalls = [];
+  nextSettlementResult = {
+    kind: "pending",
+    reason: "settlement_pending"
+  };
 
   async verifyPayment(input) {
     this.verifyCalls.push(input);
@@ -52,10 +56,7 @@ class MockPaymentFacilitator {
 
   async settlePayment(input) {
     this.settleCalls.push(input);
-    return {
-      kind: "pending",
-      reason: "settlement_pending"
-    };
+    return this.nextSettlementResult;
   }
 }
 
@@ -67,7 +68,8 @@ function createGate(
     facilitator,
     store,
     now: () => "2026-07-13T12:00:00.000Z",
-    createRecordId: () => "payment_record_001"
+    createRecordId: () => "payment_record_001",
+    createReceiptId: () => "receipt_001"
   });
 }
 
@@ -94,6 +96,7 @@ test("PaymentGate returns payment_required when payment is missing", async () =>
   assert.equal(result.challenge.reason, "payment_missing");
   assert.equal(store.putCalls, 0);
   assert.equal(facilitator.verifyCalls.length, 0);
+  assert.equal(facilitator.settleCalls.length, 0);
 });
 
 test("PaymentGate rejects obviously wrong network payments before facilitator verification", async () => {
@@ -116,6 +119,7 @@ test("PaymentGate rejects obviously wrong network payments before facilitator ve
   assert.equal(result.rejection.code, "wrong_network");
   assert.equal(store.putCalls, 0);
   assert.equal(facilitator.verifyCalls.length, 0);
+  assert.equal(facilitator.settleCalls.length, 0);
 });
 
 test("PaymentGate rejects wrong recipient payments before facilitator verification", async () => {
@@ -139,6 +143,7 @@ test("PaymentGate rejects wrong recipient payments before facilitator verificati
   assert.equal(result.rejection.code, "wrong_recipient");
   assert.equal(store.putCalls, 0);
   assert.equal(facilitator.verifyCalls.length, 0);
+  assert.equal(facilitator.settleCalls.length, 0);
 });
 
 test("PaymentGate rejects malformed expiration timestamps before facilitator verification", async () => {
@@ -162,6 +167,7 @@ test("PaymentGate rejects malformed expiration timestamps before facilitator ver
   assert.equal(result.rejection.code, "invalid_payment");
   assert.equal(store.putCalls, 0);
   assert.equal(facilitator.verifyCalls.length, 0);
+  assert.equal(facilitator.settleCalls.length, 0);
 });
 
 test("PaymentGate stores a verification_pending record when facilitator leaves verification pending", async () => {
@@ -192,15 +198,20 @@ test("PaymentGate stores a verification_pending record when facilitator leaves v
   assert.equal(result.record.id, "payment_record_001");
   assert.equal(store.putCalls, 1);
   assert.equal(facilitator.verifyCalls.length, 1);
+  assert.equal(facilitator.settleCalls.length, 0);
 });
 
-test("PaymentGate stores an authorized record when facilitator verifies payment", async () => {
+test("PaymentGate stores a settlement_pending record when settlement remains pending", async () => {
   const store = new MemoryPaymentStore();
   const facilitator = new MockPaymentFacilitator();
   facilitator.nextVerificationResult = {
     kind: "verified",
     payer: "0xverified-payer",
     transactionId: "0xverified_tx"
+  };
+  facilitator.nextSettlementResult = {
+    kind: "pending",
+    reason: "settlement_pending"
   };
   const gate = createGate(store, facilitator);
 
@@ -217,14 +228,91 @@ test("PaymentGate stores an authorized record when facilitator verifies payment"
 
   assert.equal(result.kind, "pending");
   assert.equal(result.reason, "settlement_pending");
-  assert.equal(result.record.state, "authorized");
+  assert.equal(result.record.state, "settlement_pending");
   assert.equal(result.record.payerId, "0xverified-payer");
   assert.equal(result.record.transactionId, "0xverified_tx");
   assert.equal(store.putCalls, 1);
   assert.equal(facilitator.verifyCalls.length, 1);
+  assert.equal(facilitator.settleCalls.length, 1);
 });
 
-test("PaymentGate stores and returns facilitator rejections", async () => {
+test("PaymentGate stores a settled record and receipt when settlement succeeds", async () => {
+  const store = new MemoryPaymentStore();
+  const facilitator = new MockPaymentFacilitator();
+  facilitator.nextVerificationResult = {
+    kind: "verified",
+    payer: "0xverified-payer",
+    transactionId: "0xverified_tx"
+  };
+  facilitator.nextSettlementResult = {
+    kind: "settled",
+    payer: "0xsettled-payer",
+    transactionId: "0xsettled_tx"
+  };
+  const gate = createGate(store, facilitator);
+
+  const result = await gate.evaluate({
+    ...createBaseAttempt(),
+    payment: {
+      raw: { signed: true },
+      scheme: "exact",
+      transactionId: "0xtx_128",
+      networkId: route.payment.amount.asset.networkId,
+      assetId: route.payment.amount.asset.assetId
+    }
+  });
+
+  assert.equal(result.kind, "accepted");
+  assert.equal(result.record.state, "settled");
+  assert.equal(result.record.transactionId, "0xsettled_tx");
+  assert.equal(result.record.payerId, "0xsettled-payer");
+  assert.equal(result.record.receipt.id, "receipt_001");
+  assert.equal(result.record.receipt.transactionId, "0xsettled_tx");
+  assert.equal(result.record.receipt.payer, "0xsettled-payer");
+  assert.equal(store.putCalls, 1);
+  assert.equal(facilitator.verifyCalls.length, 1);
+  assert.equal(facilitator.settleCalls.length, 1);
+});
+
+test("PaymentGate stores and returns settlement rejections", async () => {
+  const store = new MemoryPaymentStore();
+  const facilitator = new MockPaymentFacilitator();
+  facilitator.nextVerificationResult = {
+    kind: "verified",
+    payer: "0xverified-payer",
+    transactionId: "0xverified_tx"
+  };
+  facilitator.nextSettlementResult = {
+    kind: "rejected",
+    rejection: {
+      code: "settlement_failed",
+      message: "Settlement could not be finalized.",
+      retryable: true
+    }
+  };
+  const gate = createGate(store, facilitator);
+
+  const result = await gate.evaluate({
+    ...createBaseAttempt(),
+    payment: {
+      raw: { signed: true },
+      scheme: "exact",
+      transactionId: "0xtx_129",
+      networkId: route.payment.amount.asset.networkId,
+      assetId: route.payment.amount.asset.assetId
+    }
+  });
+
+  assert.equal(result.kind, "rejected");
+  assert.equal(result.rejection.code, "settlement_failed");
+  assert.equal(result.record.state, "rejected");
+  assert.equal(result.record.rejection.code, "settlement_failed");
+  assert.equal(store.putCalls, 1);
+  assert.equal(facilitator.verifyCalls.length, 1);
+  assert.equal(facilitator.settleCalls.length, 1);
+});
+
+test("PaymentGate stores and returns facilitator verification rejections without settling", async () => {
   const store = new MemoryPaymentStore();
   const facilitator = new MockPaymentFacilitator();
   facilitator.nextVerificationResult = {
@@ -242,7 +330,7 @@ test("PaymentGate stores and returns facilitator rejections", async () => {
     payment: {
       raw: { signed: true },
       scheme: "exact",
-      transactionId: "0xtx_128",
+      transactionId: "0xtx_130",
       networkId: route.payment.amount.asset.networkId,
       assetId: route.payment.amount.asset.assetId
     }
@@ -254,14 +342,15 @@ test("PaymentGate stores and returns facilitator rejections", async () => {
   assert.equal(result.record.rejection.code, "verification_failed");
   assert.equal(store.putCalls, 1);
   assert.equal(facilitator.verifyCalls.length, 1);
+  assert.equal(facilitator.settleCalls.length, 0);
 });
 
 test("PaymentGate returns duplicate_in_flight for an existing in-progress record without re-verifying", async () => {
   const store = new MemoryPaymentStore();
-  store.recordsByFingerprint.set("tx:route.paid-report:0xtx_129", {
+  store.recordsByFingerprint.set("tx:route.paid-report:0xtx_131", {
     id: "payment_record_existing",
     routeId: route.id,
-    fingerprint: "tx:route.paid-report:0xtx_129",
+    fingerprint: "tx:route.paid-report:0xtx_131",
     state: "verification_pending",
     requirement: route.payment,
     createdAt: "2026-07-13T10:00:00.000Z",
@@ -275,7 +364,7 @@ test("PaymentGate returns duplicate_in_flight for an existing in-progress record
     payment: {
       raw: { signed: true },
       scheme: "exact",
-      transactionId: "0xtx_129",
+      transactionId: "0xtx_131",
       networkId: route.payment.amount.asset.networkId,
       assetId: route.payment.amount.asset.assetId
     }
@@ -286,6 +375,7 @@ test("PaymentGate returns duplicate_in_flight for an existing in-progress record
   assert.equal(result.record.id, "payment_record_existing");
   assert.equal(store.putCalls, 0);
   assert.equal(facilitator.verifyCalls.length, 0);
+  assert.equal(facilitator.settleCalls.length, 0);
 });
 
 test("PaymentGate returns accepted for an existing settled record without re-verifying", async () => {
@@ -299,7 +389,7 @@ test("PaymentGate returns accepted for an existing settled record without re-ver
     createdAt: "2026-07-13T10:00:00.000Z",
     updatedAt: "2026-07-13T10:05:00.000Z",
     receipt: {
-      id: "receipt_001",
+      id: "receipt_999",
       routeId: route.id,
       fingerprint: "tx:route.paid-report:0xtx_999",
       requirement: route.payment,
@@ -324,6 +414,7 @@ test("PaymentGate returns accepted for an existing settled record without re-ver
   assert.equal(result.record.id, "payment_record_settled");
   assert.equal(store.putCalls, 0);
   assert.equal(facilitator.verifyCalls.length, 0);
+  assert.equal(facilitator.settleCalls.length, 0);
 });
 
 test("PaymentGate returns unresolved for an existing unresolved record without re-verifying", async () => {
@@ -356,4 +447,5 @@ test("PaymentGate returns unresolved for an existing unresolved record without r
   assert.match(result.reason, /requires recovery/i);
   assert.equal(store.putCalls, 0);
   assert.equal(facilitator.verifyCalls.length, 0);
+  assert.equal(facilitator.settleCalls.length, 0);
 });

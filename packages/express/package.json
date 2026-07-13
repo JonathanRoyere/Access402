@@ -17,5 +17,8 @@
   "sideEffects": false,
   "dependencies": {
     "@access402/core": "0.0.0"
+  },
+  "peerDependencies": {
+    "express": ">=4.18"
   }
 }

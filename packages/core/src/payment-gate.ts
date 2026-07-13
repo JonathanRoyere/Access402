@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   PaymentFacilitator,
+  PaymentSettlementResult,
   PaymentVerificationResult
 } from "./facilitator.js";
 import { createPaymentRequiredResult } from "./payment-challenge.js";
@@ -20,6 +21,7 @@ export interface PaymentGateOptions {
   readonly store: PaymentStore;
   readonly now?: () => IsoTimestamp;
   readonly createRecordId?: () => string;
+  readonly createReceiptId?: () => string;
 }
 
 export class PaymentGate {
@@ -27,6 +29,7 @@ export class PaymentGate {
   private readonly store: PaymentStore;
   private readonly now: () => IsoTimestamp;
   private readonly createRecordId: () => string;
+  private readonly createReceiptId: () => string;
 
   constructor(options: PaymentGateOptions) {
     this.facilitator = options.facilitator;
@@ -34,6 +37,8 @@ export class PaymentGate {
     this.now = options.now ?? (() => new Date().toISOString());
     this.createRecordId =
       options.createRecordId ?? (() => `payment_${randomUUID()}`);
+    this.createReceiptId =
+      options.createReceiptId ?? (() => `receipt_${randomUUID()}`);
   }
 
   async evaluate(attempt: PaymentAttempt): Promise<PaymentGateResult> {
@@ -151,20 +156,21 @@ export class PaymentGate {
     verification: PaymentVerificationResult
   ): Promise<PaymentGateResult> {
     if (verification.kind === "verified") {
-      const record = this.createRecord(attempt, fingerprint, {
+      const authorizedRecord = this.createRecord(attempt, fingerprint, {
         state: "authorized",
-        payerId: attempt.request.payerId ?? verification.payer ?? attempt.payment?.payer,
+        payerId:
+          attempt.request.payerId ??
+          verification.payer ??
+          attempt.payment?.payer,
         transactionId:
           verification.transactionId ?? attempt.payment?.transactionId
       });
 
-      await this.store.put(record);
+      const settlement = await this.facilitator.settlePayment({
+        record: authorizedRecord
+      });
 
-      return {
-        kind: "pending",
-        record,
-        reason: "settlement_pending"
-      };
+      return this.createSettlementResult(authorizedRecord, settlement);
     }
 
     if (verification.kind === "pending") {
@@ -196,6 +202,74 @@ export class PaymentGate {
       kind: "rejected",
       record,
       rejection: verification.rejection
+    };
+  }
+
+  private async createSettlementResult(
+    authorizedRecord: PaymentRecord,
+    settlement: PaymentSettlementResult
+  ): Promise<PaymentGateResult> {
+    if (settlement.kind === "settled") {
+      const timestamp = this.now();
+      const payerId = settlement.payer ?? authorizedRecord.payerId;
+      const transactionId =
+        settlement.transactionId ?? authorizedRecord.transactionId;
+      const receipt = {
+        id: this.createReceiptId(),
+        routeId: authorizedRecord.routeId,
+        fingerprint: authorizedRecord.fingerprint,
+        requirement: authorizedRecord.requirement,
+        settledAt: timestamp,
+        transactionId,
+        payer: payerId
+      };
+      const record: PaymentRecord = {
+        ...authorizedRecord,
+        state: "settled",
+        payerId,
+        transactionId,
+        updatedAt: timestamp,
+        receipt,
+        rejection: undefined
+      };
+
+      await this.store.put(record);
+
+      return {
+        kind: "accepted",
+        record
+      };
+    }
+
+    if (settlement.kind === "pending") {
+      const record: PaymentRecord = {
+        ...authorizedRecord,
+        state: "settlement_pending",
+        updatedAt: this.now()
+      };
+
+      await this.store.put(record);
+
+      return {
+        kind: "pending",
+        record,
+        reason: settlement.reason
+      };
+    }
+
+    const record: PaymentRecord = {
+      ...authorizedRecord,
+      state: "rejected",
+      updatedAt: this.now(),
+      rejection: settlement.rejection
+    };
+
+    await this.store.put(record);
+
+    return {
+      kind: "rejected",
+      record,
+      rejection: settlement.rejection
     };
   }
 
