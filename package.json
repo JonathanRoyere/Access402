@@ -10,7 +10,8 @@
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty",
     "clean": "find packages -name dist -type d -prune -exec rm -rf {} + && find . -name '*.tsbuildinfo' -delete",
-    "smoke": "node work/smoke-test.mjs"
+    "smoke": "node work/smoke-test.mjs",
+    "test:core": "npm run build && node --test test/core/payment-challenge.test.mjs test/core/payment-gate.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
