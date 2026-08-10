@@ -114,6 +114,24 @@ Before Live, require origin authorization in the application. Node applications 
 
 Do not claim Live readiness while the origin remains reachable around the Gateway.
 
+#### Cloudflare Workers and Sites
+
+Do not deploy the Node HTTP server entry point inside a Cloudflare Worker. Use the Worker-native export from `@access402/cli/gateway/cloudflare`, pass Worker bindings directly, and keep the application origin private or service-bound:
+
+```js
+import { createCloudflareGateway } from '@access402/cli/gateway/cloudflare'
+import access402Config from './access402.json'
+
+export default createCloudflareGateway({
+  config: access402Config,
+  originBinding: 'ORIGIN',
+})
+```
+
+Store `ACCESS402_INSTALLATION_ID`, `ACCESS402_API_KEY`, `ACCESS402_MODE`, and `ACCESS402_ORIGIN_AUTH_SECRET` as Worker secrets or bindings. Never expect `process.env` inside a Worker. Prefer a Cloudflare service binding named by `originBinding`; use a fixed `config.origin` only when the origin must be reached over HTTPS. Do not pass an unbound `fetch` method, do not use Node streams, and do not rely on `redirect: "error"`. The packaged Worker gateway handles those runtime differences and rejects control-plane redirects explicitly.
+
+Treat local and public URLs as authorized URLs on one stable installation. When the public hostname becomes known, update that installation's authorized URLs instead of creating a second installation or replacing credentials. If deployment diagnostics return `503`, inspect the safe `X-Access402-Error` code and Worker logs; never include credentials, payment payloads, or protected response bodies in those logs.
+
 ## 5. Fail closed
 
 Protected routes must fail closed when configuration is missing or invalid, Access402 settlement is unavailable, Coinbase verification cannot complete, the network or asset differs, the amount differs, the receiving wallet differs, or origin authorization fails. Return an unavailable or payment failure response without running the protected handler.
