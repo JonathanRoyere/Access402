@@ -1,13 +1,19 @@
-node_modules
-dist
-coverage
-*.log
-*.tsbuildinfo
-
-.DS_Store
-
+# Access402 and application secrets
 .env
 .env.*
 !.env.example
+!.env.*.example
+.env.access402
 
-.local-notes/
+# Dependencies and generated output
+node_modules/
+dist/
+build/
+coverage/
+*.log
+*.tgz
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/

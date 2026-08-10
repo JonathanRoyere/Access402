@@ -1,22 +1,12 @@
 {
-  "name": "access402",
+  "name": "access402-agent-skill-source",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
+  "description": "Canonical public source for the Access402 coding-agent skill.",
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "build": "tsc -b",
-    "typecheck": "tsc -b --pretty",
-    "clean": "find packages -name dist -type d -prune -exec rm -rf {} + && find . -name '*.tsbuildinfo' -delete",
-    "smoke": "node work/smoke-test.mjs",
-    "test:core": "npm run build && node --test test/core/payment-challenge.test.mjs test/core/payment-gate.test.mjs",
-    "test:all": "npm run build && node --test test/core/payment-challenge.test.mjs test/core/payment-gate.test.mjs test/storage-memory/in-memory-payment-store.test.mjs test/express/access402-middleware.test.mjs"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.1",
-    "typescript": "^5.8.3"
+    "test": "node tests/validate-skill.mjs",
+    "validate": "node tests/validate-skill.mjs"
   },
   "engines": {
     "node": ">=20"
