@@ -2,4 +2,4 @@ interface:
   display_name: "Access402"
   short_description: "Add and verify x402 payments in existing apps"
   brand_color: "#3157F6"
-  default_prompt: "Use $access402 to add Sandbox x402 payments to the routes I specify, then test the integration."
+  default_prompt: "Use $access402 to set up x402 payments. First ask whether I want Sandbox/test or Live/production, then ask which endpoints to protect and the USDC price for each."

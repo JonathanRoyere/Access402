@@ -5,18 +5,27 @@ description: Add, repair, verify, or prepare deployment of Access402 x402 v2 pay
 
 # Access402 integration
 
-Add Access402 to the existing application and leave every requested route challenge-verified in Sandbox. Stop only for Access402 browser authorization, a required wallet signature, or a material deployment choice that cannot be inferred safely.
+Add Access402 to the existing application and leave every requested route challenge-verified in the environment the user chooses. Stop only for Access402 browser authorization, a required wallet signature, or a material deployment choice that cannot be inferred safely.
 
 ## Non-negotiable defaults
 
 - Use x402 version 2 only.
-- Default every new integration to Sandbox on `eip155:84532` with Base Sepolia USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
-- Use Live only after the user explicitly requests it. Live is `eip155:8453` with Base USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`.
+- Ask the user to choose Sandbox/test or Live/production before setup. Recommend Sandbox for a first integration, but never choose the environment silently. Sandbox is `eip155:84532` with Base Sepolia USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
+- Use Live only after the user explicitly selects it. Live is `eip155:8453` with Base USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`.
 - Keep credentials and installation secrets server-side. Never ask for or accept private keys, seed phrases, Coinbase credentials, dashboard JWTs, or installation API keys.
 - Preserve unrelated work and existing application behavior outside the declared protected routes.
 - Treat repository route declarations as the source of truth. Do not create duplicate policies or duplicate adapters.
 
-## 1. Inspect before changing
+## 1. Ask two setup questions
+
+Before inspecting or changing the repository, collect these two decisions:
+
+1. Ask whether the integration should use **Sandbox/test** or **Live/production** payments.
+2. Ask which endpoints to protect and the USDC price for each one. Request the HTTP method, path, and price together, and give a short example such as `GET /api/report — 0.02 USDC`.
+
+Ask only for details the user has not already supplied in the current request. Wait until the environment and at least one complete method/path/price declaration are known before running setup. Do not broaden this into a configuration interview; infer the stack, adapter, deployment model, public URL, and other implementation details from the repository whenever safe.
+
+## 2. Inspect before changing
 
 Inspect the repository root, current changes, framework, package manager, launch command, route registration, authentication, reverse proxies, deployment files, public URL configuration, and secret-loading behavior.
 
@@ -35,14 +44,14 @@ npx @access402/cli doctor --json
 
 Reuse and repair a healthy installation. Never initialize a second installation merely because setup is run again.
 
-## 2. Declare routes and prices
+## 3. Declare routes and prices
 
-Convert the user's request into explicit method, canonical path, USDC price, and access-mode declarations. Default to `per_request`. Ask only if a route or price is materially ambiguous.
+Convert the user's answers into explicit method, canonical path, USDC price, and access-mode declarations. Default to `per_request`. Ask a follow-up only when a provided method, route, or price remains materially ambiguous.
 
 Initialize once from the application root, repeating `--route` for each policy:
 
 ```bash
-npx @access402/cli init --mode sandbox \
+npx @access402/cli init --mode <sandbox-or-live> \
   --route "GET /api/report 0.02" \
   --route "POST /api/analyze 0.05" \
   --json
@@ -63,7 +72,7 @@ Canonicalize URLs before comparing or protecting them:
 
 Do not protect health checks, browser authorization callbacks, static assets, or other operational endpoints unless the user explicitly names them.
 
-## 3. Complete device authorization
+## 4. Complete device authorization
 
 Run `init` and let the user complete Access402 device authorization in the browser. The browser is the boundary for sign-in and approval.
 
@@ -71,7 +80,7 @@ Never request that the user paste a dashboard session, dashboard JWT, Coinbase c
 
 Load `.env.access402` only in the server process and ensure Git ignores it. Never expose it through frontend environment prefixes, client bundles, source files, logs, exception bodies, test snapshots, generated build output, or agent messages.
 
-## 4. Detect and apply one adapter
+## 5. Detect and apply one adapter
 
 Prefer a maintained native adapter when the framework is supported. Use the Universal HTTP Gateway for other HTTP stacks. Do not combine a native adapter and Gateway protection for the same route.
 
@@ -132,7 +141,7 @@ Store `ACCESS402_INSTALLATION_ID`, `ACCESS402_API_KEY`, `ACCESS402_MODE`, and `A
 
 Treat local and public URLs as authorized URLs on one stable installation. When the public hostname becomes known, update that installation's authorized URLs instead of creating a second installation or replacing credentials. If deployment diagnostics return `503`, inspect the safe `X-Access402-Error` code and Worker logs; never include credentials, payment payloads, or protected response bodies in those logs.
 
-## 5. Fail closed
+## 6. Fail closed
 
 Protected routes must fail closed when configuration is missing or invalid, Access402 settlement is unavailable, Coinbase verification cannot complete, the network or asset differs, the amount differs, the receiving wallet differs, or origin authorization fails. Return an unavailable or payment failure response without running the protected handler.
 
@@ -140,7 +149,7 @@ Keep public routes reachable. Do not expose protected response bodies through er
 
 Do not implement a facilitator locally. Coinbase/CDP credentials belong only in Access402-managed server-side secrets.
 
-## 6. Validate the application
+## 7. Validate the application
 
 Start or restart the application through its normal development command. Run:
 
@@ -168,7 +177,7 @@ npx @access402/cli mcp
 
 Keep authorization and installation mutations in the CLI/browser flow.
 
-## 7. Fund and test Sandbox payments
+## 8. Fund and test Sandbox payments
 
 A challenge test does not spend funds. A full Sandbox payment requires a funded buyer wallet and a signature from that wallet. The receiving project wallet does not need faucet funds.
 
@@ -183,7 +192,7 @@ If the buyer lacks funds:
 
 Never fund the Access402 receiving wallet instead of the buyer wallet. Never handle the buyer's private key or seed phrase.
 
-## 8. Guard Live mode
+## 9. Guard Live mode
 
 Enable Live only when the user explicitly requests a Live deployment and has approved the deployment target, routes, prices, asset, receiving wallet, and origin topology.
 
@@ -199,7 +208,7 @@ Before reporting Live readiness, require all of the following:
 - Gateway origins, when used, reject bypass traffic;
 - a Live payment is attempted only with the user's explicit approval.
 
-## 9. Report the result
+## 10. Report the result
 
 Finish with a concise report containing:
 
