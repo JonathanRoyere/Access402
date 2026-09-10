@@ -44,6 +44,8 @@ npx @access402/cli doctor --json
 
 Reuse and repair a healthy installation. Never initialize a second installation merely because setup is run again.
 
+After detecting the application metadata, propose the project name Access402 will use and ask the user to confirm it or provide a replacement. Ask only about the project name. Derive the installation name from the confirmed project and detected adapter, and proceed without asking the user to approve the installation name.
+
 ## 3. Declare routes and prices
 
 Convert the user's answers into explicit method, canonical path, USDC price, and access-mode declarations. Default to `per_request`. Ask a follow-up only when a provided method, route, or price remains materially ambiguous.
@@ -52,6 +54,7 @@ Initialize once from the application root, repeating `--route` for each policy:
 
 ```bash
 npx @access402/cli init --mode <sandbox-or-live> \
+  --project "<confirmed-project-name>" \
   --route "GET /api/report 0.02" \
   --route "POST /api/analyze 0.05" \
   --json

@@ -47,7 +47,7 @@ for (const value of requiredNetworkValues) {
 
 const requiredSafetyPatterns = [
   /x402 version 2 only/i,
-  /default every new integration to Sandbox/i,
+  /Ask the user to choose Sandbox\/test or Live\/production/i,
   /credentials and installation secrets server-side/i,
   /never ask for or accept private keys, seed phrases, Coinbase credentials, dashboard JWTs, or installation API keys/i,
   /fail closed/i,
