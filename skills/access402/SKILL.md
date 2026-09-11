@@ -50,6 +50,16 @@ After detecting the application metadata, propose the project name Access402 wil
 
 Convert the user's answers into explicit method, canonical path, USDC price, and access-mode declarations. Default to `per_request`. Ask a follow-up only when a provided method, route, or price remains materially ambiguous.
 
+Before declaring a route, trace the requested paid behavior to the server-side operation that delivers the valuable data or performs the valuable mutation. A browser URL or client-side router component is not a security boundary. For single-page applications:
+
+- inspect the component's network requests and protect the underlying API method and path;
+- never treat a client-side navigation challenge as protection for an unprotected API;
+- do not ship paid content inside the public JavaScript bundle;
+- remove mock-success or fallback behavior that presents a protected action as successful after a 402 or settlement failure;
+- verify that a direct unpaid request to every underlying API fails closed without executing its handler.
+
+Protecting a visual page can be an additional UX layer, but it never replaces server-side enforcement on the operation being sold. Do not report the integration complete until the valuable server-side operation is protected and tested directly.
+
 Initialize once from the application root, repeating `--route` for each policy:
 
 ```bash
